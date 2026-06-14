@@ -1,0 +1,11 @@
+CREATE TABLE supplier_profiles (
+    supplier_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL UNIQUE,
+    business_name VARCHAR(200) ,
+    business_address TEXT ,
+    is_hardware_shop BOOLEAN DEFAULT FALSE,
+    avg_rating DECIMAL(3,2) DEFAULT 0.00,
+
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
+        ON DELETE CASCADE
+);

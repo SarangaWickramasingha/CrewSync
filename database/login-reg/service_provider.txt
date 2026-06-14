@@ -1,0 +1,11 @@
+CREATE TABLE service_provider (
+    profile_id             INT AUTO_INCREMENT PRIMARY KEY,
+    user_id                INT NOT NULL UNIQUE,
+    bio                    TEXT,                    -- added later
+    work_address           VARCHAR(255),
+    willing_outside_region BOOLEAN NOT NULL DEFAULT FALSE,
+    charge_per_day         DECIMAL(10,2),           -- added later
+    avg_rating             DECIMAL(3,2) DEFAULT 0.00,
+    is_available           BOOLEAN NOT NULL DEFAULT TRUE,
+    CONSTRAINT fk_sp_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);

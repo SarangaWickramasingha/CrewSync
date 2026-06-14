@@ -1,0 +1,8 @@
+CREATE TABLE provider_skills (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    profile_id  INT NOT NULL,
+    skill_id    INT NOT NULL,
+    CONSTRAINT fk_psk_profile FOREIGN KEY (profile_id) REFERENCES service_provider_profiles(profile_id) ON DELETE CASCADE,
+    CONSTRAINT fk_psk_skill   FOREIGN KEY (skill_id)   REFERENCES skills(skill_id)                      ON DELETE CASCADE,
+    UNIQUE KEY uq_provider_skill (profile_id, skill_id)
+);
