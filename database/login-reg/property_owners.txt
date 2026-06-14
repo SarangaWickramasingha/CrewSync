@@ -1,0 +1,8 @@
+CREATE TABLE property_owners (
+    owner_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL UNIQUE,
+    address TEXT,
+
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
+        ON DELETE CASCADE
+);

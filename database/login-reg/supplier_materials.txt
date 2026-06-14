@@ -1,0 +1,17 @@
+CREATE TABLE supplier_materials (
+    id           INT AUTO_INCREMENT PRIMARY KEY,
+    supplier_id  INT NOT NULL,
+    material_id  INT NOT NULL,
+    unit_price   DECIMAL(10,2) NOT NULL,
+    is_available BOOLEAN NOT NULL DEFAULT TRUE,
+    stock_qty    INT DEFAULT 0,
+    description  TEXT,
+
+    CONSTRAINT fk_sm_supplier FOREIGN KEY (supplier_id)
+        REFERENCES supplier_profiles(supplier_id) ON DELETE CASCADE,
+
+    CONSTRAINT fk_sm_material FOREIGN KEY (material_id)
+        REFERENCES materials(material_id) ON DELETE CASCADE,
+
+    UNIQUE KEY uq_supplier_material (supplier_id, material_id)
+);

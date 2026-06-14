@@ -1,0 +1,5 @@
+CREATE TABLE materials (
+    material_id  INT AUTO_INCREMENT PRIMARY KEY,
+    name         VARCHAR(150) NOT NULL,
+    unit         VARCHAR(50) NOT NULL
+);
