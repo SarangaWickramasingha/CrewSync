@@ -60,7 +60,9 @@ CREATE TABLE provider_skills (
 
     UNIQUE KEY uq_provider_skill (profile_id, skill_id)
 );
-
+-- Fix provider_skills table to include experience_yr
+ALTER TABLE provider_skills 
+ADD COLUMN experience_yr INT DEFAULT 0;
 -- =====================================================
 -- 5. PROPERTY OWNERS
 -- =====================================================
