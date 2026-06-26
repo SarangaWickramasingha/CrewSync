@@ -158,3 +158,17 @@ CREATE TABLE material_orders (
         REFERENCES supplier_materials(id)
         ON DELETE RESTRICT
 );
+
+-- ============================================================
+-- 4. FEEDBACK (Home page "Contact Admin / Send Feedback" form)
+-- ============================================================
+
+CREATE TABLE feedback (
+    feedback_id   INT AUTO_INCREMENT PRIMARY KEY,
+    name          VARCHAR(150) NOT NULL,
+    email         VARCHAR(255) NOT NULL,
+    message_type  ENUM('General Inquiry','Bug Report','Suggestion / Feature Request','Account Issue','Payment Problem','Other') NOT NULL DEFAULT 'General Inquiry',
+    message       TEXT NOT NULL,
+    status        ENUM('New','Reviewed','Assigned','Dismissed') NOT NULL DEFAULT 'New',
+    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
