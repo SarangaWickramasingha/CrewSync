@@ -60,7 +60,9 @@ CREATE TABLE provider_skills (
 
     UNIQUE KEY uq_provider_skill (profile_id, skill_id)
 );
-
+-- Fix provider_skills table to include experience_yr
+ALTER TABLE provider_skills 
+ADD COLUMN experience_yr INT DEFAULT 0;
 -- =====================================================
 -- 5. PROPERTY OWNERS
 -- =====================================================
@@ -157,18 +159,4 @@ CREATE TABLE material_orders (
     CONSTRAINT fk_mo_sm FOREIGN KEY (supplier_material_id)
         REFERENCES supplier_materials(id)
         ON DELETE RESTRICT
-);
-
--- ============================================================
--- 4. FEEDBACK (Home page "Contact Admin / Send Feedback" form)
--- ============================================================
-
-CREATE TABLE feedback (
-    feedback_id   INT AUTO_INCREMENT PRIMARY KEY,
-    name          VARCHAR(150) NOT NULL,
-    email         VARCHAR(255) NOT NULL,
-    message_type  ENUM('General Inquiry','Bug Report','Suggestion / Feature Request','Account Issue','Payment Problem','Other') NOT NULL DEFAULT 'General Inquiry',
-    message       TEXT NOT NULL,
-    status        ENUM('New','Reviewed','Assigned','Dismissed') NOT NULL DEFAULT 'New',
-    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

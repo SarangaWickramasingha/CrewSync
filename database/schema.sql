@@ -1,311 +1,307 @@
+-- ============================================================
+--  CrewSync Database Schema (Final)
+-- ============================================================
+
 CREATE DATABASE IF NOT EXISTS crewsync;
 USE crewsync;
 
--- =====================================================
--- USERS
--- =====================================================
-
+-- ============================================================
+-- 1. USERS (base entity for all roles)
+-- ============================================================
 CREATE TABLE users (
-user_id INT AUTO_INCREMENT PRIMARY KEY,
-email VARCHAR(255),
-password_hash VARCHAR(255),
-role ENUM('admin','owner','provider','supplier','guest'),
-full_name VARCHAR(255),
-phone VARCHAR(50),
-district VARCHAR(100),
-city VARCHAR(100),
-created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    user_id       INT AUTO_INCREMENT PRIMARY KEY,
+    fname         VARCHAR(100) NOT NULL,
+    lname         VARCHAR(100) NOT NULL,
+    email         VARCHAR(255) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    contact_no    VARCHAR(20),
+    district      VARCHAR(100),
+    role          ENUM('admin','property_owner','service_provider','material_supplier') NOT NULL,
+    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- =====================================================
--- SERVICE PROVIDERS
--- =====================================================
-
-CREATE TABLE service_provider_profiles (
-profile_id INT AUTO_INCREMENT PRIMARY KEY,
-user_id INT,
-bio TEXT,
-work_address VARCHAR(255),
-willing_outside_region BOOLEAN,
-charge_per_day DECIMAL(10,2),
-avg_rating DECIMAL(3,2),
-is_available BOOLEAN,
-FOREIGN KEY (user_id) REFERENCES users(user_id)
+-- ============================================================
+-- 2. ADMIN
+-- ============================================================
+CREATE TABLE admins (
+    admin_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id  INT NOT NULL UNIQUE,
+    CONSTRAINT fk_admin_user FOREIGN KEY (user_id)
+        REFERENCES users(user_id) ON DELETE CASCADE
 );
 
-CREATE TABLE provider_services (
-service_id INT AUTO_INCREMENT PRIMARY KEY,
-profile_id INT,
-category ENUM(
-'mason',
-'carpenter',
-'electrician',
-'plumber'
-),
-description TEXT,
-years_experience INT,
-FOREIGN KEY (profile_id) REFERENCES service_provider_profiles(profile_id)
+-- ============================================================
+-- 3. PROPERTY OWNERS
+-- ============================================================
+CREATE TABLE property_owners (
+    owner_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id  INT NOT NULL UNIQUE,
+    address  TEXT,
+    CONSTRAINT fk_po_user FOREIGN KEY (user_id)
+        REFERENCES users(user_id) ON DELETE CASCADE
 );
 
--- =====================================================
--- SUPPLIERS
--- =====================================================
+-- ============================================================
+-- 4. SERVICE PROVIDERS
+-- ============================================================
+CREATE TABLE service_providers (
+    provider_id            INT AUTO_INCREMENT PRIMARY KEY,
+    user_id                INT NOT NULL UNIQUE,
+    bio                    TEXT,
+    experience_yr          INT DEFAULT 0,
+    charge_per_day         DECIMAL(10,2),
+    avg_rating             DECIMAL(3,2) DEFAULT 0.00,
+    is_available           BOOLEAN NOT NULL DEFAULT TRUE,
+    willing_outside_region BOOLEAN NOT NULL DEFAULT FALSE,
+    CONSTRAINT fk_sp_user FOREIGN KEY (user_id)
+        REFERENCES users(user_id) ON DELETE CASCADE
+);
 
+-- ============================================================
+-- 5. MATERIAL SUPPLIERS
+-- ============================================================
 CREATE TABLE supplier_profiles (
-supplier_id INT AUTO_INCREMENT PRIMARY KEY,
-user_id INT,
-shop_name VARCHAR(255),
-shop_address VARCHAR(255),
-is_hardware_shop BOOLEAN,
-avg_rating DECIMAL(3,2),
-district VARCHAR(100),
-FOREIGN KEY (user_id) REFERENCES users(user_id)
+    supplier_id      INT AUTO_INCREMENT PRIMARY KEY,
+    user_id          INT NOT NULL UNIQUE,
+    business_name    VARCHAR(200),
+    business_address TEXT,
+    is_hardware_shop BOOLEAN DEFAULT FALSE,
+    avg_rating       DECIMAL(3,2) DEFAULT 0.00,
+    CONSTRAINT fk_sup_user FOREIGN KEY (user_id)
+        REFERENCES users(user_id) ON DELETE CASCADE
 );
 
--- =====================================================
--- PROJECT TEMPLATES
--- =====================================================
-
-CREATE TABLE project_templates (
-template_id INT AUTO_INCREMENT PRIMARY KEY,
-template_name VARCHAR(255),
-description TEXT
+-- ============================================================
+-- 6. SKILLS
+-- ============================================================
+CREATE TABLE skills (
+    skill_id INT AUTO_INCREMENT PRIMARY KEY,
+    name     VARCHAR(100) NOT NULL UNIQUE
 );
 
-CREATE TABLE template_tasks (
-template_task_id INT AUTO_INCREMENT PRIMARY KEY,
-template_id INT,
-task_name VARCHAR(255),
-suggested_duration_days INT,
-sequence_order INT,
-FOREIGN KEY (template_id) REFERENCES project_templates(template_id)
+-- ============================================================
+-- 7. PROVIDER SKILLS (M:N)
+-- ============================================================
+CREATE TABLE provider_skills (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    provider_id INT NOT NULL,
+    skill_id    INT NOT NULL,
+    experience_yr INT DEFAULT 0,
+    CONSTRAINT fk_psk_provider FOREIGN KEY (provider_id)
+        REFERENCES service_providers(provider_id) ON DELETE CASCADE,
+    CONSTRAINT fk_psk_skill FOREIGN KEY (skill_id)
+        REFERENCES skills(skill_id) ON DELETE CASCADE,
+    UNIQUE KEY uq_provider_skill (provider_id, skill_id)
 );
 
--- =====================================================
--- PROJECTS
--- =====================================================
+-- ============================================================
+-- 8. HARDWARE STORE DETAILS
+-- ============================================================
+CREATE TABLE hardware_stores (
+    hardware_id INT AUTO_INCREMENT PRIMARY KEY,
+    supplier_id INT NOT NULL UNIQUE,
+    store_name  VARCHAR(150) NOT NULL,
+    br_number   VARCHAR(100) NOT NULL,
+    address     VARCHAR(255) NOT NULL,
+    CONSTRAINT fk_hw_supplier FOREIGN KEY (supplier_id)
+        REFERENCES supplier_profiles(supplier_id) ON DELETE CASCADE
+);
+ALTER TABLE supplier_profiles 
+ADD COLUMN is_delivery BOOLEAN DEFAULT FALSE;
+-- ============================================================
+-- 9. MATERIALS
+-- ============================================================
+CREATE TABLE materials (
+    material_id INT AUTO_INCREMENT PRIMARY KEY,
+    name        VARCHAR(150) NOT NULL,
+    unit        VARCHAR(50)  NOT NULL
+);
+
+-- ============================================================
+-- 10. SUPPLIER MATERIALS (what each supplier stocks)
+-- ============================================================
+
+
+CREATE TABLE supplier_materials (
+    id           INT AUTO_INCREMENT PRIMARY KEY,
+    supplier_id  INT NOT NULL,
+    material_id  INT NOT NULL,
+    unit_price   DECIMAL(10,2) NOT NULL,
+    stock_qty    INT DEFAULT 0,
+    is_available BOOLEAN NOT NULL DEFAULT TRUE,
+    description  TEXT,
+    CONSTRAINT fk_sm_supplier FOREIGN KEY (supplier_id)
+        REFERENCES supplier_profiles(supplier_id) ON DELETE CASCADE,
+    CONSTRAINT fk_sm_material FOREIGN KEY (material_id)
+        REFERENCES materials(material_id) ON DELETE CASCADE,
+    UNIQUE KEY uq_supplier_material (supplier_id, material_id)
+);
+
+
+
+-- ============================================================
+-- 11. PROJECTS
+-- ============================================================
+
 
 CREATE TABLE projects (
-project_id INT AUTO_INCREMENT PRIMARY KEY,
-owner_id INT,
-title VARCHAR(255),
-description TEXT,
-status ENUM(
-'planning',
-'ongoing',
-'completed',
-'paused'
-),
-total_budget DECIMAL(12,2),
-actual_cost DECIMAL(12,2),
-start_date DATE,
-end_date DATE,
-created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-FOREIGN KEY (owner_id) REFERENCES users(user_id)
+    project_id   INT AUTO_INCREMENT PRIMARY KEY,
+    owner_id     INT NOT NULL,
+    project_name VARCHAR(150) NOT NULL,
+    district     VARCHAR(100),
+    address      VARCHAR(255),
+    p_budget     DECIMAL(15,2),
+    p_cost       DECIMAL(15,2),
+    start_date   DATE,
+    end_date     DATE,
+    is_finished  BOOLEAN DEFAULT FALSE,
+
+    CONSTRAINT fk_proj_owner
+        FOREIGN KEY (owner_id)
+        REFERENCES property_owners(owner_id)
+        ON DELETE CASCADE
 );
 
--- =====================================================
--- TASKS
--- =====================================================
+-- ============================================================
+-- 12. TASKS
+-- ============================================================
+
+
 
 CREATE TABLE tasks (
-task_id INT AUTO_INCREMENT PRIMARY KEY,
-project_id INT,
-task_name VARCHAR(255),
-description TEXT,
-status ENUM(
-'pending',
-'in_progress',
-'completed'
-),
-priority ENUM(
-'low',
-'medium',
-'high'
-),
-start_date DATE,
-end_date DATE,
-estimated_cost DECIMAL(12,2),
-actual_cost DECIMAL(12,2),
-sequence_order INT,
-FOREIGN KEY (project_id) REFERENCES projects(project_id)
+    task_id      INT AUTO_INCREMENT PRIMARY KEY,
+    project_id   INT NOT NULL,
+    task_name    VARCHAR(150) NOT NULL,
+    start_date   DATE,
+    end_date     DATE,
+    task_budget  DECIMAL(10,2),
+    t_cost       DECIMAL(10,2),
+    is_finished  BOOLEAN DEFAULT FALSE,
+    CONSTRAINT fk_task_project
+        FOREIGN KEY (project_id)
+        REFERENCES projects(project_id)
+        ON DELETE CASCADE
 );
 
--- =====================================================
--- SERVICE REQUESTS
--- =====================================================
 
+-- ============================================================
+-- 13. TASK ASSIGNMENTS (provider assigned to task)
+-- ============================================================
+
+
+CREATE TABLE task_assignments (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    task_id     INT NOT NULL,
+    provider_id INT NOT NULL,
+    CONSTRAINT fk_ta_task FOREIGN KEY (task_id)
+        REFERENCES tasks(task_id) ON DELETE CASCADE,
+    CONSTRAINT fk_ta_provider FOREIGN KEY (provider_id)
+        REFERENCES service_providers(provider_id) ON DELETE CASCADE,
+    UNIQUE KEY uq_task_provider (task_id, provider_id)
+);
+
+-- ============================================================
+-- 14. SERVICE REQUESTS
+-- ============================================================
 CREATE TABLE service_requests (
-request_id INT AUTO_INCREMENT PRIMARY KEY,
-task_id INT,
-owner_id INT,
-provider_id INT,
-status ENUM(
-'pending',
-'accepted',
-'rejected',
-'completed'
-),
-message TEXT,
-requested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-responded_at TIMESTAMP NULL,
-FOREIGN KEY (task_id) REFERENCES tasks(task_id),
-FOREIGN KEY (owner_id) REFERENCES users(user_id),
-FOREIGN KEY (provider_id) REFERENCES users(user_id)
+    request_id     INT AUTO_INCREMENT PRIMARY KEY,
+    owner_id       INT NOT NULL,
+    provider_id    INT NOT NULL,
+    task_id        INT,
+    request_date   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at     DATETIME,
+    request_status ENUM('pending','accepted','rejected','expired') DEFAULT 'pending',
+    CONSTRAINT fk_sr_owner    FOREIGN KEY (owner_id)
+        REFERENCES property_owners(owner_id)    ON DELETE CASCADE,
+    CONSTRAINT fk_sr_provider FOREIGN KEY (provider_id)
+        REFERENCES service_providers(provider_id) ON DELETE CASCADE,
+    CONSTRAINT fk_sr_task     FOREIGN KEY (task_id)
+        REFERENCES tasks(task_id)               ON DELETE SET NULL
 );
 
-CREATE TABLE task_providers (
-id INT AUTO_INCREMENT PRIMARY KEY,
-task_id INT,
-provider_id INT,
-assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-FOREIGN KEY (task_id) REFERENCES tasks(task_id),
-FOREIGN KEY (provider_id) REFERENCES users(user_id)
-);
-
--- =====================================================
--- MATERIALS
--- =====================================================
-
-CREATE TABLE materials (
-material_id INT AUTO_INCREMENT PRIMARY KEY,
-supplier_id INT,
-name VARCHAR(255),
-category VARCHAR(100),
-description TEXT,
-unit_price DECIMAL(12,2),
-unit VARCHAR(50),
-is_available BOOLEAN,
-stock_qty INT,
-FOREIGN KEY (supplier_id)
-REFERENCES supplier_profiles(supplier_id)
-);
-
+-- ============================================================
+-- 15. MATERIAL ORDERS
+-- ============================================================
 CREATE TABLE material_orders (
-order_id INT AUTO_INCREMENT PRIMARY KEY,
-task_id INT,
-buyer_id INT,
-supplier_id INT,
-status ENUM(
-'pending',
-'accepted',
-'rejected',
-'delivered'
-),
-total_cost DECIMAL(12,2),
-ordered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-FOREIGN KEY (task_id) REFERENCES tasks(task_id),
-FOREIGN KEY (buyer_id) REFERENCES users(user_id),
-FOREIGN KEY (supplier_id)
-REFERENCES supplier_profiles(supplier_id)
+    order_id             INT AUTO_INCREMENT PRIMARY KEY,
+    owner_id             INT NOT NULL,
+    supplier_material_id INT NOT NULL,
+    quantity             INT NOT NULL,
+    total_cost           DECIMAL(12,2) DEFAULT 0.00,
+    order_status         ENUM('pending','accepted','rejected','delivered') NOT NULL DEFAULT 'pending',
+    ordered_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_mo_owner FOREIGN KEY (owner_id)
+        REFERENCES property_owners(owner_id)    ON DELETE CASCADE,
+    CONSTRAINT fk_mo_sm   FOREIGN KEY (supplier_material_id)
+        REFERENCES supplier_materials(id)       ON DELETE RESTRICT
 );
 
-CREATE TABLE order_items (
-item_id INT AUTO_INCREMENT PRIMARY KEY,
-order_id INT,
-material_id INT,
-quantity INT,
-unit_price_at_order DECIMAL(12,2),
-FOREIGN KEY (order_id)
-REFERENCES material_orders(order_id),
-FOREIGN KEY (material_id)
-REFERENCES materials(material_id)
-);
-
-CREATE TABLE task_materials (
-id INT AUTO_INCREMENT PRIMARY KEY,
-task_id INT,
-material_id INT,
-quantity_used DECIMAL(12,2),
-cost DECIMAL(12,2),
-FOREIGN KEY (task_id) REFERENCES tasks(task_id),
-FOREIGN KEY (material_id) REFERENCES materials(material_id)
-);
-
--- =====================================================
--- REVIEWS
--- =====================================================
-
+-- ============================================================
+-- 16. REVIEWS (owner reviews a provider)
+-- ============================================================
 CREATE TABLE reviews (
-review_id INT AUTO_INCREMENT PRIMARY KEY,
-reviewer_id INT,
-reviewee_id INT,
-task_id INT NULL,
-rating TINYINT,
-comment TEXT,
-created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-FOREIGN KEY (reviewer_id) REFERENCES users(user_id),
-FOREIGN KEY (reviewee_id) REFERENCES users(user_id),
-FOREIGN KEY (task_id) REFERENCES tasks(task_id)
+    review_id   INT AUTO_INCREMENT PRIMARY KEY,
+    owner_id    INT NOT NULL,
+    provider_id INT NOT NULL,
+    rating      TINYINT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+    comment     TEXT,
+    review_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_rev_owner    FOREIGN KEY (owner_id)
+        REFERENCES property_owners(owner_id)      ON DELETE CASCADE,
+    CONSTRAINT fk_rev_provider FOREIGN KEY (provider_id)
+        REFERENCES service_providers(provider_id) ON DELETE CASCADE
 );
 
-CREATE TABLE review_photos (
-photo_id INT AUTO_INCREMENT PRIMARY KEY,
-review_id INT,
-photo_url VARCHAR(500),
-uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-FOREIGN KEY (review_id)
-REFERENCES reviews(review_id)
+-- ============================================================
+-- 17. FEEDBACK (user sends to admin)
+-- ============================================================
+
+
+CREATE TABLE feedback (
+    feedback_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NULL,
+    name VARCHAR(150),
+    email VARCHAR(255),
+    subject VARCHAR(255),
+    message TEXT NOT NULL,
+    is_handled BOOLEAN
+        NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP
+        DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_fb_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(user_id)
+        ON DELETE SET NULL
 );
 
-CREATE TABLE platform_feedback (
-feedback_id INT AUTO_INCREMENT PRIMARY KEY,
-user_id INT NULL,
-message TEXT,
-created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-FOREIGN KEY (user_id) REFERENCES users(user_id)
-);
 
--- =====================================================
--- FORUM
--- =====================================================
 
-CREATE TABLE forum_messages (
-message_id INT AUTO_INCREMENT PRIMARY KEY,
-project_id INT,
-sender_id INT,
-message TEXT,
-sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-is_cleared BOOLEAN,
-cleared_at TIMESTAMP NULL,
-FOREIGN KEY (project_id) REFERENCES projects(project_id),
-FOREIGN KEY (sender_id) REFERENCES users(user_id)
-);
-
--- =====================================================
--- NOTIFICATIONS
--- =====================================================
-
+-- ============================================================
+-- 18. NOTIFICATIONS
+-- ============================================================
 CREATE TABLE notifications (
-notif_id INT AUTO_INCREMENT PRIMARY KEY,
-user_id INT,
-type ENUM(
-'request',
-'order',
-'review',
-'system'
-),
-message VARCHAR(500),
-is_read BOOLEAN,
-related_id INT NULL,
-created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-FOREIGN KEY (user_id) REFERENCES users(user_id)
+    notification_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id         INT NOT NULL,
+    title           VARCHAR(255) NOT NULL,
+    message         TEXT,
+    is_read         BOOLEAN DEFAULT FALSE,
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_notif_user FOREIGN KEY (user_id)
+        REFERENCES users(user_id) ON DELETE CASCADE
 );
 
--- =====================================================
--- REPORTS
--- =====================================================
-
+-- ============================================================
+-- 19. REPORTS
+-- ============================================================
 CREATE TABLE reports (
-report_id INT AUTO_INCREMENT PRIMARY KEY,
-project_id INT,
-task_id INT NULL,
-report_type ENUM(
-'task',
-'final'
-),
-file_path VARCHAR(500),
-generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-FOREIGN KEY (project_id) REFERENCES projects(project_id),
-FOREIGN KEY (task_id) REFERENCES tasks(task_id)
+    report_id      INT AUTO_INCREMENT PRIMARY KEY,
+    project_id     INT,
+    task_id        INT,
+    report_type    ENUM('project','task','financial','general') DEFAULT 'general',
+    file_path      VARCHAR(500),
+    generated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_rep_project FOREIGN KEY (project_id)
+        REFERENCES projects(project_id) ON DELETE SET NULL,
+    CONSTRAINT fk_rep_task    FOREIGN KEY (task_id)
+        REFERENCES tasks(task_id)       ON DELETE SET NULL
 );

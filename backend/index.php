@@ -25,6 +25,16 @@ else if ($uri === '/api/feedback/submit' && $method === 'POST') {
     submitFeedback();
 }
 
+else if ($uri === '/api/stats/summary' && $method === 'GET') {
+    require_once __DIR__ . '/routes/stats.php';
+    getStatsSummary();
+}
+
+else if ($uri === '/api/projects/create' && $method === 'POST') {
+    require_once __DIR__ . '/routes/projects.php';
+    createProjectRoute();
+}
+
 else if ($uri === '/api/feedback' && $method === 'GET') {
     require_once __DIR__ . '/routes/feedback.php';
     listFeedback();
@@ -34,6 +44,17 @@ else if ($uri === '/api/feedback/status' && $method === 'PUT') {
     require_once __DIR__ . '/routes/feedback.php';
     updateFeedbackStatus();
 }
+
+else if (preg_match('#^/api/projects/(\d+)$#', $uri, $matches) && $method === 'GET') {
+    require_once __DIR__ . '/routes/projects.php';
+    getProjectRoute((int)$matches[1]);
+}
+
+else if (preg_match('#^/api/projects/(\d+)/status$#', $uri, $matches) && $method === 'PUT') {
+    require_once __DIR__ . '/routes/projects.php';
+    updateProjectStatusRoute((int)$matches[1]);
+}
+
 
 else {
     http_response_code(404);
