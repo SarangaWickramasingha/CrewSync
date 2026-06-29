@@ -7,10 +7,9 @@ class AuthController {
 
     private $db;
 
-    public function __construct() {
-        $database = new Database();
-        $this->db = $database->connect();
-    }
+public function __construct() {
+    $this->db = Database::getInstance()->getConnection(); // 👈 singleton way
+}
 
     public function login() {
 
@@ -125,4 +124,28 @@ class AuthController {
             ]);
         }
     }
+
+
+
+    /**
+     * Email check -Registration
+     */
+    public function checkEmail() {
+    $data = json_decode(file_get_contents("php://input"), true);
+
+    $email = trim($data['email'] ?? '');
+
+    if (!$email) {
+        http_response_code(400);
+        echo json_encode(["success" => false, "message" => "Email is required"]);
+        return;
+    }
+
+    $userModel = new User($this->db);
+    $exists = $userModel->emailExists($email);
+
+    echo json_encode(["exists" => $exists]);
+}
+
+
 }

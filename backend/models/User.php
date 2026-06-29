@@ -59,42 +59,42 @@ class User {
             } elseif ($data['role'] === 'service_provider') {
 
                 $stmt = $this->conn->prepare("
-                    INSERT INTO service_provider (user_id, bio, work_address, willing_outside_region, charge_per_day)
-                    VALUES (?, ?, ?, ?, ?)
+                        INSERT INTO service_providers (user_id, bio, willing_outside_region, charge_per_day)
+                        VALUES (?, ?, ?, ?)
                 ");
                 $stmt->execute([
                     $userId,
                     $data['bio'] ?? null,
-                    $data['work_address'] ?? null,
                     !empty($data['willing_outside_region']) ? 1 : 0,
                     $data['charge_per_day'] ?? null
                 ]);
 
-                $profileId = $this->conn->lastInsertId();
+                $providerId = $this->conn->lastInsertId();
 
                 // Insert skills with experience_yr defaulting to 0
                 if (!empty($data['skill_ids']) && is_array($data['skill_ids'])) {
                     $skillStmt = $this->conn->prepare("
-                        INSERT INTO provider_skills (profile_id, skill_id, experience_yr)
+                        INSERT INTO provider_skills (provider_id, skill_id, experience_yr)
                         VALUES (?, ?, 0)
                     ");
                     foreach ($data['skill_ids'] as $skillId) {
-                        $skillStmt->execute([$profileId, (int)$skillId]);
+                        $skillStmt->execute([$providerId, (int)$skillId]);
                     }
                 }
 
             } elseif ($data['role'] === 'material_supplier') {
 
-                $stmt = $this->conn->prepare("
-                    INSERT INTO supplier_profiles (user_id, business_name, business_address, is_hardware_shop)
-                    VALUES (?, ?, ?, ?)
-                ");
-                $stmt->execute([
-                    $userId,
-                    $data['business_name'],
-                    $data['business_address'] ?? null,
-                    !empty($data['is_hardware_shop']) ? 1 : 0
-                ]);
+                    $stmt = $this->conn->prepare("
+                        INSERT INTO supplier_profiles (user_id, business_name, business_address, is_hardware_shop, is_delivery)
+                        VALUES (?, ?, ?, ?, ?)
+                    ");
+                    $stmt->execute([
+                        $userId,
+                        $data['business_name'],
+                        $data['business_address'] ?? null,
+                        !empty($data['is_hardware_shop']) ? 1 : 0,
+                        !empty($data['delivery']) ? 1 : 0
+                    ]);
 
                 $supplierId = $this->conn->lastInsertId();
 
@@ -112,7 +112,7 @@ class User {
                 // Insert hardware store details if applicable
                 if (!empty($data['is_hardware_shop']) && !empty($data['hw_store_name'])) {
                     $stmt = $this->conn->prepare("
-                        INSERT INTO hardware_store_details (supplier_id, store_name, br_number, address)
+                        INSERT INTO hardware_stores (supplier_id, store_name, br_number, address)
                         VALUES (?, ?, ?, ?)
                     ");
                     $stmt->execute([
