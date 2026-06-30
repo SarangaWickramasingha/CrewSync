@@ -39,10 +39,10 @@ class Stats {
             $r3 = $stmt3->fetch(PDO::FETCH_ASSOC);
             $suppliers = (int)($r3['total'] ?? 0);
 
-            // Average saved (total_budget - actual_cost)
-            $q4 = "SELECT COALESCE(AVG(total_budget - actual_cost), 0) AS avg_saved 
+            // Average saved (p_budget - p_cost)
+            $q4 = "SELECT COALESCE(AVG(p_budget - p_cost), 0) AS avg_saved 
                    FROM projects 
-                   WHERE actual_cost > 0 AND total_budget > actual_cost";
+                   WHERE p_cost > 0 AND p_budget > p_cost";
             $stmt4 = $this->conn->prepare($q4);
             $stmt4->execute();
             $r4 = $stmt4->fetch(PDO::FETCH_ASSOC);

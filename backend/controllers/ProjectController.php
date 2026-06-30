@@ -16,45 +16,6 @@ class ProjectController {
             return;
         }
 
-        // Ensure database tables exist (projects and tasks)
-        try {
-            $db->exec("CREATE TABLE IF NOT EXISTS projects (
-                project_id INT AUTO_INCREMENT PRIMARY KEY,
-                owner_id INT,
-                title VARCHAR(255) NOT NULL,
-                status ENUM('planning','ongoing','completed','paused') DEFAULT 'planning',
-                total_budget DECIMAL(12,2) NOT NULL,
-                actual_cost DECIMAL(12,2) DEFAULT 0.00,
-                start_date DATE,
-                end_date DATE,
-                district VARCHAR(100),
-                address VARCHAR(255),
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (owner_id) REFERENCES users(user_id) ON DELETE CASCADE
-            )");
-
-            $db->exec("CREATE TABLE IF NOT EXISTS tasks (
-                task_id INT AUTO_INCREMENT PRIMARY KEY,
-                project_id INT,
-                task_name VARCHAR(255) NOT NULL,
-                description TEXT,
-                status ENUM('pending','in_progress','completed') DEFAULT 'pending',
-                priority ENUM('low','medium','high') DEFAULT 'medium',
-                start_date DATE,
-                end_date DATE,
-                estimated_cost DECIMAL(12,2) DEFAULT 0.00,
-                actual_cost DECIMAL(12,2) DEFAULT 0.00,
-                sequence_order INT,
-                FOREIGN KEY (project_id) REFERENCES projects(project_id) ON DELETE CASCADE
-            )");
-        } catch (PDOException $e) {
-            echo json_encode([
-                "success" => false,
-                "message" => "Database table setup failed: " . $e->getMessage()
-            ]);
-            return;
-        }
-
         $projectModel = new Project($db);
 
         $data = json_decode(
@@ -70,6 +31,7 @@ class ProjectController {
         $district    = trim($data['district'] ?? '');
         $address     = trim($data['address'] ?? '');
         $tasks       = $data['tasks'] ?? [];
+        $taskBudgets = $data['task_budgets'] ?? [];
 
         if (!$title || !$startDate || !$endDate || $totalBudget <= 0 || !$district || !$address) {
             echo json_encode([
@@ -111,7 +73,7 @@ class ProjectController {
         }
 
         if (!empty($tasks)) {
-            $projectModel->createTasks($projectId, $tasks);
+            $projectModel->createTasks($projectId, $tasks, $taskBudgets);
         }
 
         echo json_encode([
@@ -140,10 +102,23 @@ class ProjectController {
                 return;
             }
 
-            $stmt2 = $db->prepare("SELECT * FROM tasks WHERE project_id = :id ORDER BY sequence_order ASC");
+            // Map project fields to what frontend expects
+            $project['title'] = $project['project_name'];
+            $project['total_budget'] = $project['p_budget'];
+            $project['actual_cost'] = $project['p_cost'];
+            $project['status'] = $project['is_finished'] ? 'completed' : 'ongoing';
+
+            $stmt2 = $db->prepare("SELECT * FROM tasks WHERE project_id = :id ORDER BY task_id ASC");
             $stmt2->bindValue(':id', $id, PDO::PARAM_INT);
             $stmt2->execute();
-            $tasks = $stmt2->fetchAll(PDO::FETCH_ASSOC);
+            $dbTasks = $stmt2->fetchAll(PDO::FETCH_ASSOC);
+
+            $tasks = [];
+            foreach ($dbTasks as $t) {
+                // Map tasks fields for frontend
+                $t['status'] = $t['is_finished'] ? 'completed' : 'pending';
+                $tasks[] = $t;
+            }
 
             echo json_encode([
                 "success" => true,
@@ -172,9 +147,14 @@ class ProjectController {
             return;
         }
 
+        $isFinished = ($status === 'completed') ? 1 : 0;
+
         try {
-            $stmt = $db->prepare("UPDATE projects SET status = :status WHERE project_id = :id");
-            $stmt->bindValue(':status', $status);
+            if ($isFinished) {
+                $stmt = $db->prepare("UPDATE projects SET is_finished = 1, end_date = CURRENT_DATE() WHERE project_id = :id");
+            } else {
+                $stmt = $db->prepare("UPDATE projects SET is_finished = 0, end_date = NULL WHERE project_id = :id");
+            }
             $stmt->bindValue(':id', $id, PDO::PARAM_INT);
             $stmt->execute();
             echo json_encode(["success" => true, "message" => "Project status updated to '$status'"]);
