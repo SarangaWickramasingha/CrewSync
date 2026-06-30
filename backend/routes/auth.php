@@ -10,3 +10,12 @@ function register() {
     $controller = new AuthController();
     $controller->register();
 }
+function me() {
+    $controller = new AuthController();
+    $controller->me();
+}
+
+function logout() {
+    $controller = new AuthController();
+    $controller->logout();
+}
