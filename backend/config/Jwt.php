@@ -1,6 +1,6 @@
 <?php
 
-// ── JWT CONFIGURATION ─────────────────────────────────────────────────────────
+// ───────────────────────── JWT CONFIGURATION ──────────────────────────────────
 // Secret key used to sign and verify tokens
 // WARNING: Change this before deploying to production
 // WARNING: Changing this will log out ALL users (all existing tokens become invalid)
@@ -13,7 +13,7 @@ define('JWT_EXPIRY', 7 * 24 * 60 * 60);
 define('JWT_COOKIE_NAME', 'crewsync_token');
 
 
-// ── GENERATE TOKEN ────────────────────────────────────────────────────────────
+// ───────────────────────── GENERATE TOKEN ────────────────────────────────────────
 // Takes user data, returns a signed JWT string
 // $payload should contain: user_id, role, name
 function generateToken(array $payload): string {
@@ -41,7 +41,7 @@ function generateToken(array $payload): string {
 }
 
 
-// ── VERIFY TOKEN ──────────────────────────────────────────────────────────────
+// ───────────────────────── VERIFY TOKEN ──────────────────────────────────────────
 // Reads a JWT string, checks signature + expiry
 // Returns the payload array if valid, false if invalid/expired
 function verifyToken(string $token): array|false {
@@ -71,7 +71,7 @@ function verifyToken(string $token): array|false {
 }
 
 
-// ── SET AUTH COOKIE ───────────────────────────────────────────────────────────
+// ───────────────────────── SET AUTH COOKIE ────────────────────────────────────────────
 // Sends the JWT to the browser as a secure httpOnly cookie
 // httpOnly = JS cannot read it (XSS protection)
 // SameSite=None + Secure = required for cross-origin requests (Next.js → PHP)
@@ -87,7 +87,7 @@ function setAuthCookie(string $token): void {
 }
 
 
-// ── CLEAR AUTH COOKIE ─────────────────────────────────────────────────────────
+// ───────────────────────── CLEAR AUTH COOKIE ───────────────────────────────────────────────────────
 // Called on logout — expires the cookie immediately
 function clearAuthCookie(): void {
     setcookie(JWT_COOKIE_NAME, '', [
