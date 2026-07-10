@@ -25,13 +25,12 @@ class ProjectController {
         $stmt->execute([$user['user_id']]);
         $projects = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Add a "status" field derived from is_finished — frontend expects this
         foreach ($projects as &$p) {
             $p['status'] = $p['is_finished'] ? 'completed' : 'ongoing';
         }
 
         echo json_encode([
-            "success" => true,
+            "success"  => true,
             "projects" => $projects
         ]);
     }
@@ -40,7 +39,6 @@ class ProjectController {
     public function getOne($projectId) {
         $user = requireRole('property_owner');
 
-        // Confirm this project belongs to the logged-in owner
         $stmt = $this->db->prepare("
             SELECT p.*
             FROM projects p
@@ -58,14 +56,12 @@ class ProjectController {
 
         $project['status'] = $project['is_finished'] ? 'completed' : 'ongoing';
 
-        // Get tasks for this project
         $stmt = $this->db->prepare("
-            SELECT * FROM tasks WHERE project_id = ? ORDER BY start_date ASC
+            SELECT * FROM tasks WHERE project_id = ? ORDER BY task_id ASC
         ");
         $stmt->execute([$projectId]);
         $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Add "status" field for each task too
         foreach ($tasks as &$t) {
             $t['status'] = $t['is_finished'] ? 'completed' : 'ongoing';
         }
@@ -73,7 +69,110 @@ class ProjectController {
         echo json_encode([
             "success" => true,
             "project" => $project,
-            "tasks" => $tasks
+            "tasks"   => $tasks
+        ]);
+    }
+
+    // ── CREATE PROJECT + TASKS ────────────────────────────────────────────────
+    public function create() {
+        $user = requireRole('property_owner');
+        
+        $data = json_decode(file_get_contents("php://input"), true) ?? [];
+
+        $projectName   = trim($data['title'] ?? '');
+        $totalBudget   = floatval($data['total_budget'] ?? 0);
+        $startDate     = trim($data['start_date'] ?? '');
+        $targetEndDate = trim($data['target_end_date'] ?? '');
+        $district      = trim($data['district'] ?? '');
+        $address       = trim($data['address'] ?? '');
+        $tasks         = $data['tasks'] ?? [];
+        $taskBudgets   = $data['task_budgets'] ?? [];
+
+        if (!$projectName || !$startDate || !$targetEndDate || $totalBudget <= 0 || !$district || !$address) {
+            http_response_code(400);
+            echo json_encode([
+                "success" => false,
+                "message" => "Project name, budget, start date, target end date, district, and address are required"
+            ]);
+            return;
+        }
+
+        // Get owner_id from property_owners table using user_id from JWT
+        $stmt = $this->db->prepare("
+            SELECT owner_id FROM property_owners WHERE user_id = ?
+        ");
+        $stmt->execute([$user['user_id']]);
+        $owner = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$owner) {
+            http_response_code(403);
+            echo json_encode(["success" => false, "message" => "Property owner profile not found"]);
+            return;
+        }
+
+        $ownerId = $owner['owner_id'];
+
+        // Check if owner already has an active project
+        $stmt = $this->db->prepare("
+            SELECT project_id FROM projects 
+            WHERE owner_id = ? AND is_finished = 0
+            LIMIT 1
+        ");
+        $stmt->execute([$ownerId]);
+        $activeProject = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($activeProject) {
+            http_response_code(409);
+            echo json_encode([
+                "success" => false,
+                "message" => "You already have an active project. Please finish it before starting a new one.",
+                "active_project_id" => $activeProject['project_id']
+            ]);
+            return;
+        }
+
+
+        // Insert project
+        $stmt = $this->db->prepare("
+            INSERT INTO projects 
+                (owner_id, project_name, district, address, p_budget, p_cost, start_date, end_date, target_end_date, is_finished)
+            VALUES 
+                (?, ?, ?, ?, ?, 0, ?, NULL, ?, 0)
+        ");
+        $stmt->execute([
+            $ownerId,
+            $projectName,
+            $district,
+            $address,
+            $totalBudget,
+            $startDate,
+            $targetEndDate,
+        ]);
+
+        $projectId = $this->db->lastInsertId();
+
+        if (!$projectId) {
+            http_response_code(500);
+            echo json_encode(["success" => false, "message" => "Failed to create project"]);
+            return;
+        }
+
+        // Insert tasks with per-task budgets
+        if (!empty($tasks)) {
+            $stmt = $this->db->prepare("
+                INSERT INTO tasks (project_id, task_name, task_budget, t_cost, is_finished)
+                VALUES (?, ?, ?, 0, 0)
+            ");
+            foreach ($tasks as $taskName) {
+                $taskBudget = floatval($taskBudgets[$taskName] ?? 0);
+                $stmt->execute([$projectId, $taskName, $taskBudget]);
+            }
+        }
+
+        echo json_encode([
+            "success"    => true,
+            "message"    => "Project created successfully",
+            "project_id" => $projectId
         ]);
     }
 
@@ -81,7 +180,8 @@ class ProjectController {
     public function toggleFinish($projectId) {
         $user = requireRole('property_owner');
 
-        // Confirm ownership + get current state
+
+
         $stmt = $this->db->prepare("
             SELECT p.is_finished
             FROM projects p
@@ -97,14 +197,13 @@ class ProjectController {
             return;
         }
 
-        // Flip the boolean
         $newValue = $project['is_finished'] ? 0 : 1;
 
         $stmt = $this->db->prepare("UPDATE projects SET is_finished = ? WHERE project_id = ?");
         $stmt->execute([$newValue, $projectId]);
 
         echo json_encode([
-            "success" => true,
+            "success"     => true,
             "is_finished" => (bool) $newValue
         ]);
     }

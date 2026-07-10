@@ -305,3 +305,18 @@ CREATE TABLE reports (
     CONSTRAINT fk_rep_task    FOREIGN KEY (task_id)
         REFERENCES tasks(task_id)       ON DELETE SET NULL
 );
+
+-- ==============================================================
+-- 19. forum   --not added to ER 
+-- ==============================================================
+CREATE TABLE project_comments (
+    comment_id  INT AUTO_INCREMENT PRIMARY KEY,
+    project_id  INT NOT NULL,
+    user_id     INT NOT NULL,
+    comment     TEXT NOT NULL,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_pc_project FOREIGN KEY (project_id)
+        REFERENCES projects(project_id) ON DELETE CASCADE,
+    CONSTRAINT fk_pc_user FOREIGN KEY (user_id)
+        REFERENCES users(user_id) ON DELETE CASCADE
+);
