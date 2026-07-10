@@ -54,6 +54,13 @@ INSERT INTO users (fname, lname, email, password_hash, contact_no, district, rol
 ('Priyantha','Dias',       'priyantha@gmail.com','$2b$12$a43XCERgmgxuwZ9RtquLqu.SXHvh9D1l8p85EjiGpbaTBexOLPypK', '0771234508', 'Gampaha',    'material_supplier'),
 ('Lasith',   'Kumara',     'lasith@gmail.com',   '$2b$12$JBKqi6fLeE3Hdtv8bT9AmuZtRTdkZmRgBgOUpxFwBr0zHjS5NS6ou', '0771234509', 'Kurunegala','material_supplier');
 
+
+INSERT INTO users (fname, lname, email, password_hash, contact_no, district, role)
+VALUES ('System', 'Admin', 'admin@crewsync.com', '$2y$10$EnkkPFBnw/qa50F/q4AXO.4Zj/o4YD3mRy7uyFyI7LiMl8/mXBcDe', '0770000000', 'Colombo', 'admin');
+
+INSERT INTO admins (user_id)
+SELECT user_id FROM users WHERE email = 'admin@crewsync.com';
+
 -- ============================
 -- 2. PROPERTY OWNERS (user_id 1-3)
 -- ============================
