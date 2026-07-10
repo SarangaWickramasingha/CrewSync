@@ -320,3 +320,27 @@ CREATE TABLE project_comments (
     CONSTRAINT fk_pc_user FOREIGN KEY (user_id)
         REFERENCES users(user_id) ON DELETE CASCADE
 );
+INSERT INTO skills (skill_id, name) VALUES
+(1,  'Masonry'),
+(2,  'Carpentry'),
+(3,  'Electrical'),
+(4,  'Plumbing'),
+(5,  'Painting'),
+(6,  'Tiling'),
+(7,  'Welding'),
+(8,  'Roofing'),
+(9,  'Waterproofing'),
+(10, 'Landscaping'),
+(11, 'Aluminium Work'),
+(12, 'Interior Design');
+
+INSERT INTO materials (material_id, name, unit) VALUES
+(1, 'Sand', 'unit'),
+(2, 'Cement', 'unit'),
+(3, 'Gravel / Metal', 'unit'),
+(4, 'Stone / Rubble', 'unit'),
+(5, 'Cement Blocks', 'unit'),
+(6, 'Timber', 'unit'),
+(7, 'Bricks', 'unit'),
+(8, 'Glass', 'unit'),
+(9, 'Other', 'unit');
