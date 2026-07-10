@@ -162,6 +162,8 @@ CREATE TABLE projects (
         ON DELETE CASCADE
 );
 
+ALTER TABLE projects ADD COLUMN target_end_date DATE NULL AFTER end_date;
+
 -- ============================================================
 -- 12. TASKS
 -- ============================================================
