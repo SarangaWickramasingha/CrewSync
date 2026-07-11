@@ -34,6 +34,10 @@ elseif ($uri === '/api/auth/logout' && $method === 'POST') {
 
 
 // ── PROJECTS ─────────────────────────────────────────────────────────────────
+elseif ($uri === '/api/projects/create' && $method === 'POST') {
+    require_once __DIR__ . '/routes/projects.php';
+    createProject();
+} //-create project
 elseif ($uri === '/api/projects' && $method === 'GET') {
     require_once __DIR__ . '/routes/projects.php';
     getAllProjects();
