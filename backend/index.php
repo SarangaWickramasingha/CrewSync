@@ -8,6 +8,13 @@ $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $method = $_SERVER['REQUEST_METHOD'];
 
 // Remove folder path (adjust if needed)
+$uri = str_replace('/CrewSync/backend/index.php', '', $uri);
+
+// Debug mode — only runs if you add ?debug=1 to the URL
+if (isset($_GET['debug'])) {
+    echo json_encode(["debug_uri" => $uri, "method" => $method]);
+    exit();
+}
 $uri = str_replace('/CrewSync-backend/backend/index.php', '', $uri);
 
 
@@ -70,6 +77,42 @@ elseif (preg_match('#^/api/tasks/(\d+)$#', $uri, $matches) && $method === 'DELET
 }
 
 
+
+
+else if ($uri === '/api/feedback/submit' && $method === 'POST') {
+    require_once __DIR__ . '/routes/feedback.php';
+    submitFeedback();
+}
+
+else if ($uri === '/api/stats/summary' && $method === 'GET') {
+    require_once __DIR__ . '/routes/stats.php';
+    getStatsSummary();
+}
+
+else if ($uri === '/api/projects/create' && $method === 'POST') {
+    require_once __DIR__ . '/routes/projects.php';
+    createProjectRoute();
+}
+
+else if ($uri === '/api/feedback' && $method === 'GET') {
+    require_once __DIR__ . '/routes/feedback.php';
+    listFeedback();
+}
+
+else if ($uri === '/api/feedback/status' && $method === 'PUT') {
+    require_once __DIR__ . '/routes/feedback.php';
+    updateFeedbackStatus();
+}
+
+else if (preg_match('#^/api/projects/(\d+)$#', $uri, $matches) && $method === 'GET') {
+    require_once __DIR__ . '/routes/projects.php';
+    getProjectRoute((int)$matches[1]);
+}
+
+else if (preg_match('#^/api/projects/(\d+)/status$#', $uri, $matches) && $method === 'PUT') {
+    require_once __DIR__ . '/routes/projects.php';
+    updateProjectStatusRoute((int)$matches[1]);
+}
 
 
 else {
