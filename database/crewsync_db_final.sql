@@ -163,6 +163,7 @@ CREATE TABLE projects (
 );
 
 ALTER TABLE projects ADD COLUMN target_end_date DATE NULL AFTER end_date;
+
 -- ============================================================
 -- 12. TASKS
 -- ============================================================

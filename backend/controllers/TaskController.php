@@ -1,0 +1,153 @@
+<?php
+
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../middleware/auth.php';
+
+class TaskController {
+
+    private $db;
+
+    public function __construct() {
+        $this->db = Database::getInstance()->getConnection();
+    }
+
+    // ── HELPER: confirm this task belongs to the logged-in owner ─────────────
+    private function getOwnedTask($taskId, $userId) {
+        $stmt = $this->db->prepare("
+            SELECT t.*
+            FROM tasks t
+            JOIN projects p ON p.project_id = t.project_id
+            JOIN property_owners po ON po.owner_id = p.owner_id
+            WHERE po.user_id = ? AND t.task_id = ?
+        ");
+        $stmt->execute([$userId, $taskId]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    // ── ADD TASK ───────────────────────────────────────────────────────────────
+    public function create() {
+        $user = requireRole('property_owner');
+        $data = json_decode(file_get_contents("php://input"), true);
+
+        $projectId = $data['project_id'] ?? null;
+        $taskName  = trim($data['task_name'] ?? '');
+
+        if (!$projectId || !$taskName) {
+            http_response_code(400);
+            echo json_encode(["success" => false, "message" => "project_id and task_name are required"]);
+            return;
+        }
+
+        // Confirm the project belongs to this owner
+        $stmt = $this->db->prepare("
+            SELECT p.project_id
+            FROM projects p
+            JOIN property_owners po ON po.owner_id = p.owner_id
+            WHERE po.user_id = ? AND p.project_id = ?
+        ");
+        $stmt->execute([$user['user_id'], $projectId]);
+        if (!$stmt->fetch()) {
+            http_response_code(403);
+            echo json_encode(["success" => false, "message" => "Project not found or access denied"]);
+            return;
+        }
+
+        $stmt = $this->db->prepare("
+            INSERT INTO tasks (project_id, task_name, task_budget, t_cost, is_finished)
+            VALUES (?, ?, ?, 0, 0)
+        ");
+        $stmt->execute([
+            $projectId,
+            $taskName,
+            $data['task_budget'] ?? null
+        ]);
+
+        echo json_encode([
+            "success" => true,
+            "task_id" => $this->db->lastInsertId()
+        ]);
+    }
+
+    // ── UPDATE TASK (name, cost, budget) ──────────────────────────────────────
+    public function update($taskId) {
+        $user = requireRole('property_owner');
+        $task = $this->getOwnedTask($taskId, $user['user_id']);
+
+        if (!$task) {
+            http_response_code(404);
+            echo json_encode(["success" => false, "message" => "Task not found"]);
+            return;
+        }
+
+        $data = json_decode(file_get_contents("php://input"), true);
+
+        // Build dynamic update — only update fields that were sent
+        $fields = [];
+        $values = [];
+
+        if (isset($data['task_name'])) {
+            $fields[] = "task_name = ?";
+            $values[] = $data['task_name'];
+        }
+        if (isset($data['add_cost'])) {
+            // "Add Cost" adds to existing t_cost, doesn't replace it
+            $fields[] = "t_cost = t_cost + ?";
+            $values[] = $data['add_cost'];
+        }
+        if (isset($data['task_budget'])) {
+            $fields[] = "task_budget = ?";
+            $values[] = $data['task_budget'];
+        }
+
+        if (empty($fields)) {
+            echo json_encode(["success" => false, "message" => "Nothing to update"]);
+            return;
+        }
+
+        $values[] = $taskId;
+        $sql = "UPDATE tasks SET " . implode(', ', $fields) . " WHERE task_id = ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($values);
+
+        echo json_encode(["success" => true]);
+    }
+
+    // ── TOGGLE FINISH ──────────────────────────────────────────────────────────
+    public function toggleFinish($taskId) {
+        $user = requireRole('property_owner');
+        $task = $this->getOwnedTask($taskId, $user['user_id']);
+
+        if (!$task) {
+            http_response_code(404);
+            echo json_encode(["success" => false, "message" => "Task not found"]);
+            return;
+        }
+
+        $newValue = $task['is_finished'] ? 0 : 1;
+
+        $stmt = $this->db->prepare("UPDATE tasks SET is_finished = ? WHERE task_id = ?");
+        $stmt->execute([$newValue, $taskId]);
+
+        echo json_encode([
+            "success" => true,
+            "is_finished" => (bool) $newValue
+        ]);
+    }
+
+    // ── DELETE TASK ────────────────────────────────────────────────────────────
+    public function delete($taskId) {
+        $user = requireRole('property_owner');
+        $task = $this->getOwnedTask($taskId, $user['user_id']);
+
+        if (!$task) {
+            http_response_code(404);
+            echo json_encode(["success" => false, "message" => "Task not found"]);
+            return;
+        }
+
+        $stmt = $this->db->prepare("DELETE FROM tasks WHERE task_id = ?");
+        $stmt->execute([$taskId]);
+
+        echo json_encode(["success" => true]);
+    }
+}

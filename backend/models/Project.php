@@ -1,57 +1,188 @@
 <?php
 
-class Project {
-    private $conn;
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../middleware/auth.php';
 
-    public function __construct($db) {
-        $this->conn = $db;
+class ProjectController {
+
+    private $db;
+
+    public function __construct() {
+        $this->db = Database::getInstance()->getConnection();
     }
 
-    public function create($ownerId, $title, $status, $totalBudget, $startDate, $endDate, $district, $address) {
-        if (!$this->conn) {
-            return false;
+    // ── GET ALL PROJECTS FOR LOGGED-IN OWNER ──────────────────────────────────
+    public function getAll() {
+        $user = requireRole('property_owner');
+
+        $stmt = $this->db->prepare("
+            SELECT p.*
+            FROM projects p
+            JOIN property_owners po ON po.owner_id = p.owner_id
+            WHERE po.user_id = ?
+            ORDER BY p.start_date DESC
+        ");
+        $stmt->execute([$user['user_id']]);
+        $projects = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($projects as &$p) {
+            $p['status'] = $p['is_finished'] ? 'completed' : 'ongoing';
         }
 
-        $query = "INSERT INTO projects (owner_id, title, status, total_budget, actual_cost, start_date, end_date, district, address)
-                  VALUES (:owner_id, :title, :status, :total_budget, 0.00, :start_date, :end_date, :district, :address)";
-
-        $stmt = $this->conn->prepare($query);
-
-        $stmt->bindParam(':owner_id', $ownerId);
-        $stmt->bindParam(':title', $title);
-        $stmt->bindParam(':status', $status);
-        $stmt->bindParam(':total_budget', $totalBudget);
-        $stmt->bindParam(':start_date', $startDate);
-        $stmt->bindParam(':end_date', $endDate);
-        $stmt->bindParam(':district', $district);
-        $stmt->bindParam(':address', $address);
-
-        if ($stmt->execute()) {
-            return $this->conn->lastInsertId();
-        }
-        return false;
+        echo json_encode([
+            "success"  => true,
+            "projects" => $projects
+        ]);
     }
 
-    public function createTasks($projectId, $tasks) {
-        if (!$this->conn || empty($tasks)) {
-            return true;
+    // ── GET SINGLE PROJECT + ITS TASKS ────────────────────────────────────────
+    public function getOne($projectId) {
+        $user = requireRole('property_owner');
+
+        $stmt = $this->db->prepare("
+            SELECT p.*
+            FROM projects p
+            JOIN property_owners po ON po.owner_id = p.owner_id
+            WHERE po.user_id = ? AND p.project_id = ?
+        ");
+        $stmt->execute([$user['user_id'], $projectId]);
+        $project = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$project) {
+            http_response_code(404);
+            echo json_encode(["success" => false, "message" => "Project not found"]);
+            return;
         }
 
-        $query = "INSERT INTO tasks (project_id, task_name, description, status, priority, start_date, end_date, estimated_cost, actual_cost, sequence_order)
-                  VALUES (:project_id, :task_name, :description, 'pending', 'medium', NULL, NULL, 0.00, 0.00, :sequence_order)";
+        $project['status'] = $project['is_finished'] ? 'completed' : 'ongoing';
 
-        $stmt = $this->conn->prepare($query);
+        $stmt = $this->db->prepare("
+            SELECT * FROM tasks WHERE project_id = ? ORDER BY task_id ASC
+        ");
+        $stmt->execute([$projectId]);
+        $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $seq = 1;
-        foreach ($tasks as $taskName) {
-            $desc = "Task for phase: " . $taskName;
-            $stmt->bindValue(':project_id', $projectId, PDO::PARAM_INT);
-            $stmt->bindValue(':task_name', $taskName, PDO::PARAM_STR);
-            $stmt->bindValue(':description', $desc, PDO::PARAM_STR);
-            $stmt->bindValue(':sequence_order', $seq, PDO::PARAM_INT);
-            $stmt->execute();
-            $seq++;
+        foreach ($tasks as &$t) {
+            $t['status'] = $t['is_finished'] ? 'completed' : 'ongoing';
         }
-        return true;
+
+        echo json_encode([
+            "success" => true,
+            "project" => $project,
+            "tasks"   => $tasks
+        ]);
+    }
+
+    // ── CREATE PROJECT + TASKS ────────────────────────────────────────────────
+    public function create() {
+        $user = requireRole('property_owner');
+
+        $data = json_decode(file_get_contents("php://input"), true) ?? [];
+
+        $projectName   = trim($data['title'] ?? '');
+        $totalBudget   = floatval($data['total_budget'] ?? 0);
+        $startDate     = trim($data['start_date'] ?? '');
+        $targetEndDate = trim($data['target_end_date'] ?? '');
+        $district      = trim($data['district'] ?? '');
+        $address       = trim($data['address'] ?? '');
+        $tasks         = $data['tasks'] ?? [];
+        $taskBudgets   = $data['task_budgets'] ?? [];
+
+        if (!$projectName || !$startDate || !$targetEndDate || $totalBudget <= 0 || !$district || !$address) {
+            http_response_code(400);
+            echo json_encode([
+                "success" => false,
+                "message" => "Project name, budget, start date, target end date, district, and address are required"
+            ]);
+            return;
+        }
+
+        // Get owner_id from property_owners table using user_id from JWT
+        $stmt = $this->db->prepare("
+            SELECT owner_id FROM property_owners WHERE user_id = ?
+        ");
+        $stmt->execute([$user['user_id']]);
+        $owner = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$owner) {
+            http_response_code(403);
+            echo json_encode(["success" => false, "message" => "Property owner profile not found"]);
+            return;
+        }
+
+        $ownerId = $owner['owner_id'];
+
+        // Insert project
+        $stmt = $this->db->prepare("
+            INSERT INTO projects 
+                (owner_id, project_name, district, address, p_budget, p_cost, start_date, end_date, target_end_date, is_finished)
+            VALUES 
+                (?, ?, ?, ?, ?, 0, ?, NULL, ?, 0)
+        ");
+        $stmt->execute([
+            $ownerId,
+            $projectName,
+            $district,
+            $address,
+            $totalBudget,
+            $startDate,
+            $targetEndDate,
+        ]);
+
+        $projectId = $this->db->lastInsertId();
+
+        if (!$projectId) {
+            http_response_code(500);
+            echo json_encode(["success" => false, "message" => "Failed to create project"]);
+            return;
+        }
+
+        // Insert tasks with per-task budgets
+        if (!empty($tasks)) {
+            $stmt = $this->db->prepare("
+                INSERT INTO tasks (project_id, task_name, task_budget, t_cost, is_finished)
+                VALUES (?, ?, ?, 0, 0)
+            ");
+            foreach ($tasks as $taskName) {
+                $taskBudget = floatval($taskBudgets[$taskName] ?? 0);
+                $stmt->execute([$projectId, $taskName, $taskBudget]);
+            }
+        }
+
+        echo json_encode([
+            "success"    => true,
+            "message"    => "Project created successfully",
+            "project_id" => $projectId
+        ]);
+    }
+
+    // ── TOGGLE PROJECT FINISH STATUS ──────────────────────────────────────────
+    public function toggleFinish($projectId) {
+        $user = requireRole('property_owner');
+
+        $stmt = $this->db->prepare("
+            SELECT p.is_finished
+            FROM projects p
+            JOIN property_owners po ON po.owner_id = p.owner_id
+            WHERE po.user_id = ? AND p.project_id = ?
+        ");
+        $stmt->execute([$user['user_id'], $projectId]);
+        $project = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$project) {
+            http_response_code(404);
+            echo json_encode(["success" => false, "message" => "Project not found"]);
+            return;
+        }
+
+        $newValue = $project['is_finished'] ? 0 : 1;
+
+        $stmt = $this->db->prepare("UPDATE projects SET is_finished = ? WHERE project_id = ?");
+        $stmt->execute([$newValue, $projectId]);
+
+        echo json_encode([
+            "success"     => true,
+            "is_finished" => (bool) $newValue
+        ]);
     }
 }

@@ -1,0 +1,15 @@
+Property Owners
+
+nimal@gmail.com password01
+kamala@gmail.com password02
+ruwan@gmail.com password03
+
+Service Providers
+sunil@gmail.com password04
+ajith@gmail.com password05
+chamara@gmail.com password06
+
+Material Suppliers
+saman@gmail.com password07 
+priyantha@gmail.com password08
+lasith@gmail.com password09

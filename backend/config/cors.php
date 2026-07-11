@@ -2,11 +2,12 @@
 // ── WHO IS ALLOWED TO TALK TO THIS BACKEND? ───────────────────────────────────
 // During development your Next.js runs on port 3000
 // Change this to your real domain when you deploy to internet
-$allowed_origin = 'http://localhost:3000';
+$allowed_origins = ['http://localhost:3000', 'http://localhost:3001', 'http://172.17.34.135:3000', 'http://172.17.18.237:3000'];
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 
 // If the request is coming from Next.js, allow it
-if (isset($_SERVER['HTTP_ORIGIN']) && $_SERVER['HTTP_ORIGIN'] === $allowed_origin) {
-    header("Access-Control-Allow-Origin: $allowed_origin");
+if (isset($_SERVER['HTTP_ORIGIN']) && in_array($_SERVER['HTTP_ORIGIN'], $allowed_origins)) {
+    header("Access-Control-Allow-Origin: $origin");
 }
 
 // What methods can Next.js use?
