@@ -75,14 +75,15 @@ function verifyToken(string $token): array|false {
 // Sends the JWT to the browser as a secure httpOnly cookie
 // httpOnly = JS cannot read it (XSS protection)
 // SameSite=None + Secure = required for cross-origin requests (Next.js → PHP)
+
 function setAuthCookie(string $token): void {
     setcookie(JWT_COOKIE_NAME, $token, [
         'expires'  => time() + JWT_EXPIRY,   // matches token expiry (7 days)
         'path'     => '/',                    // available on all routes
         'domain'   => '',                     // current domain only
-        'secure'   => true,                   // HTTPS only (required for SameSite=None)
+        'secure'   => false,                   // HTTPS only (required for SameSite=None)
         'httponly' => true,                   // JS cannot access this cookie
-        'samesite' => 'None',                 // allows cross-origin (Next.js on diff port/domain)
+        'samesite' => 'Lax',                 // allows cross-origin (Next.js on diff port/domain)
     ]);
 }
 
@@ -94,12 +95,22 @@ function clearAuthCookie(): void {
         'expires'  => time() - 3600,         // set in the past = browser deletes it
         'path'     => '/',
         'domain'   => '',
-        'secure'   => true,
+        'secure'   => false,
         'httponly' => true,
-        'samesite' => 'None',
+        'samesite' => 'Lax',
     ]);
 }
-
+/*
+A Secure cookie is only supposed to be sent over HTTPS — but your backend is plain http://localhost. Some browsers make an exception for localhost, others don't (and yours clearly doesn't send it). This combo (SameSite=None; Secure) is the production-grade setting, but it breaks local HTTP development.
+Fix: for local dev, set the cookie as SameSite=Lax, not Secure. Find the setcookie() call in your login code (probably AuthController or config/jwt.php) — it'll look something like:
+phpsetcookie(JWT_COOKIE_NAME, $token, [
+    'expires'  => time() + 604800,
+    'path'     => '/',
+    'secure'   => true,      // ← problem
+    'httponly' => true,
+    'samesite' => 'None',    // ← problem
+]);
+ */
 
 // ── HELPER: BASE64 URL ENCODING ───────────────────────────────────────────────
 // Standard base64 uses +, /, = which are not URL-safe

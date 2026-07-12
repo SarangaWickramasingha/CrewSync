@@ -164,7 +164,7 @@ INSERT INTO reviews (owner_id, provider_id, rating, comment) VALUES
 -- ============================
 -- 14. FOUREMS (project comments - mixed users)
 -- ============================
-INSERT INTO fourems (project_id, user_id, comment) VALUES
+INSERT INTO project_comments (project_id, user_id, comment) VALUES
 (1, 1, 'Foundation work starts Monday, all welcome to discuss.'),
 (1, 4, 'I will arrive at 8am with my team.'),
 (1, 7, 'Cement delivery scheduled for Tuesday morning.'),
