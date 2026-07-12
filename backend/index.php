@@ -104,15 +104,15 @@ else if ($uri === '/api/feedback/status' && $method === 'PUT') {
     updateFeedbackStatus();
 }
 
-// else if (preg_match('#^/api/projects/(\d+)$#', $uri, $matches) && $method === 'GET') {
-//     require_once __DIR__ . '/routes/projects.php';
-//     getProjectRoute((int)$matches[1]);
-// }
+else if (preg_match('#^/api/projects/(\d+)/comments$#', $uri, $matches) && $method === 'GET') {
+    require_once __DIR__ . '/routes/comments.php';
+    getProjectComments((int)$matches[1]);
+}
 
-// else if (preg_match('#^/api/projects/(\d+)/status$#', $uri, $matches) && $method === 'PUT') {
-//     require_once __DIR__ . '/routes/projects.php';
-//     updateProjectStatusRoute((int)$matches[1]);
-// }
+else if (preg_match('#^/api/projects/(\d+)/comments$#', $uri, $matches) && $method === 'POST') {
+    require_once __DIR__ . '/routes/comments.php';
+    createProjectComment((int)$matches[1]);
+}
 
 
 else {

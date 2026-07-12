@@ -81,7 +81,8 @@ class CommentController {
         // Return the freshly created comment with author info
         $stmt = $this->db->prepare("
             SELECT c.comment_id, c.project_id, c.user_id, c.comment, c.created_at,
-                    CONCAT(u.fname, ' ', u.lname) AS author_name, u.role AS author_role            FROM project_comments c
+                   CONCAT(u.fname, ' ', u.lname) AS author_name, u.role AS author_role
+            FROM project_comments c
             JOIN users u ON u.user_id = c.user_id
             WHERE c.comment_id = ?
         ");
