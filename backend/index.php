@@ -25,7 +25,7 @@ if ($uri === '/api/auth/login' && $method === 'POST') {
 elseif ($uri === '/api/auth/register' && $method === 'POST') {
     require_once __DIR__ . '/routes/auth.php';
     register();
-} 
+}
 elseif ($uri === '/api/auth/check-email' && $method === 'POST') {
     require_once __DIR__ . '/routes/auth.php';
     checkEmail();
@@ -44,7 +44,7 @@ elseif ($uri === '/api/auth/logout' && $method === 'POST') {
 elseif ($uri === '/api/projects/create' && $method === 'POST') {
     require_once __DIR__ . '/routes/projects.php';
     createProject();
-} //-create project
+}
 elseif ($uri === '/api/projects' && $method === 'GET') {
     require_once __DIR__ . '/routes/projects.php';
     getAllProjects();
@@ -76,42 +76,97 @@ elseif (preg_match('#^/api/tasks/(\d+)$#', $uri, $matches) && $method === 'DELET
     deleteTask($matches[1]);
 }
 
-
-
-
-else if ($uri === '/api/feedback/submit' && $method === 'POST') {
+// ── FEEDBACK (PUBLIC / GENERAL) ──────────────────────────────────────────────
+elseif ($uri === '/api/feedback/submit' && $method === 'POST') {
     require_once __DIR__ . '/routes/feedback.php';
     submitFeedback();
 }
-
-else if ($uri === '/api/stats/summary' && $method === 'GET') {
-    require_once __DIR__ . '/routes/stats.php';
-    getStatsSummary();
-}
-
-// else if ($uri === '/api/projects/create' && $method === 'POST') {
-//     require_once __DIR__ . '/routes/projects.php';
-//     createProjectRoute();
-// }
-
-else if ($uri === '/api/feedback' && $method === 'GET') {
+elseif ($uri === '/api/feedback' && $method === 'GET') {
     require_once __DIR__ . '/routes/feedback.php';
     listFeedback();
 }
-
-else if ($uri === '/api/feedback/status' && $method === 'PUT') {
+elseif ($uri === '/api/feedback/status' && $method === 'PUT') {
     require_once __DIR__ . '/routes/feedback.php';
     updateFeedbackStatus();
 }
 
-else if (preg_match('#^/api/projects/(\d+)/comments$#', $uri, $matches) && $method === 'GET') {
+// ── STATS ────────────────────────────────────────────────────────────────────
+elseif ($uri === '/api/stats/summary' && $method === 'GET') {
+    require_once __DIR__ . '/routes/stats.php';
+    getStatsSummary();
+}
+
+// ── COMMENTS ─────────────────────────────────────────────────────────────────
+elseif (preg_match('#^/api/projects/(\d+)/comments$#', $uri, $matches) && $method === 'GET') {
     require_once __DIR__ . '/routes/comments.php';
     getProjectComments((int)$matches[1]);
 }
-
-else if (preg_match('#^/api/projects/(\d+)/comments$#', $uri, $matches) && $method === 'POST') {
+elseif (preg_match('#^/api/projects/(\d+)/comments$#', $uri, $matches) && $method === 'POST') {
     require_once __DIR__ . '/routes/comments.php';
     createProjectComment((int)$matches[1]);
+}
+
+
+// ── ADMIN ────────────────────────────────────────────────────────────────────
+elseif ($uri === '/api/admin/stats' && $method === 'GET') {
+    require_once __DIR__ . '/routes/admin.php';
+    adminGetStats();
+}
+elseif ($uri === '/api/admin/users' && $method === 'GET') {
+    require_once __DIR__ . '/routes/admin.php';
+    adminGetAllUsers();
+}
+elseif ($uri === '/api/admin/users' && $method === 'POST') {
+    require_once __DIR__ . '/routes/admin.php';
+    adminCreateUser();
+}
+elseif (preg_match('#^/api/admin/users/(\d+)$#', $uri, $matches) && $method === 'GET') {
+    require_once __DIR__ . '/routes/admin.php';
+    adminGetUserById($matches[1]);
+}
+elseif (preg_match('#^/api/admin/users/(\d+)$#', $uri, $matches) && $method === 'PUT') {
+    require_once __DIR__ . '/routes/admin.php';
+    adminUpdateUser($matches[1]);
+}
+elseif (preg_match('#^/api/admin/users/(\d+)$#', $uri, $matches) && $method === 'DELETE') {
+    require_once __DIR__ . '/routes/admin.php';
+    adminDeleteUser($matches[1]);
+}
+elseif ($uri === '/api/admin/users/property-owners' && $method === 'GET') {
+    require_once __DIR__ . '/routes/admin.php';
+    adminGetPropertyOwners();
+}
+elseif ($uri === '/api/admin/users/service-providers' && $method === 'GET') {
+    require_once __DIR__ . '/routes/admin.php';
+    adminGetServiceProviders();
+}
+elseif ($uri === '/api/admin/users/material-suppliers' && $method === 'GET') {
+    require_once __DIR__ . '/routes/admin.php';
+    adminGetMaterialSuppliers();
+}
+elseif ($uri === '/api/admin/reviews' && $method === 'GET') {
+    require_once __DIR__ . '/routes/admin.php';
+    adminGetAllReviews();
+}
+elseif (preg_match('#^/api/admin/reviews/(\d+)$#', $uri, $matches) && $method === 'DELETE') {
+    require_once __DIR__ . '/routes/admin.php';
+    adminDeleteReview($matches[1]);
+}
+elseif ($uri === '/api/admin/feedback' && $method === 'GET') {
+    require_once __DIR__ . '/routes/admin.php';
+    adminGetAllFeedback();
+}
+elseif (preg_match('#^/api/admin/feedback/(\d+)$#', $uri, $matches) && $method === 'PUT') {
+    require_once __DIR__ . '/routes/admin.php';
+    adminUpdateFeedback($matches[1]);
+}
+elseif ($uri === '/api/admin/projects' && $method === 'GET') {
+    require_once __DIR__ . '/routes/admin.php';
+    adminGetAllProjects();
+}
+elseif (preg_match('#^/api/admin/projects/(\d+)$#', $uri, $matches) && $method === 'GET') {
+    require_once __DIR__ . '/routes/admin.php';
+    adminGetProjectWithTasks($matches[1]);
 }
 
 
