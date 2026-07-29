@@ -15,3 +15,7 @@ function toggleProjectFinish($projectId) {
     $controller = new ProjectController();
     $controller->toggleFinish($projectId);
 }
+function createProject() {
+    $controller = new ProjectController();
+    $controller->create();
+}

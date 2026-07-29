@@ -162,6 +162,8 @@ CREATE TABLE projects (
         ON DELETE CASCADE
 );
 
+ALTER TABLE projects ADD COLUMN target_end_date DATE NULL AFTER end_date;
+
 -- ============================================================
 -- 12. TASKS
 -- ============================================================
@@ -305,3 +307,42 @@ CREATE TABLE reports (
     CONSTRAINT fk_rep_task    FOREIGN KEY (task_id)
         REFERENCES tasks(task_id)       ON DELETE SET NULL
 );
+
+-- ==============================================================
+-- 19. forum   --not added to ER 
+-- ==============================================================
+CREATE TABLE project_comments (
+    comment_id  INT AUTO_INCREMENT PRIMARY KEY,
+    project_id  INT NOT NULL,
+    user_id     INT NOT NULL,
+    comment     TEXT NOT NULL,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_pc_project FOREIGN KEY (project_id)
+        REFERENCES projects(project_id) ON DELETE CASCADE,
+    CONSTRAINT fk_pc_user FOREIGN KEY (user_id)
+        REFERENCES users(user_id) ON DELETE CASCADE
+);
+INSERT INTO skills (skill_id, name) VALUES
+(1,  'Masonry'),
+(2,  'Carpentry'),
+(3,  'Electrical'),
+(4,  'Plumbing'),
+(5,  'Painting'),
+(6,  'Tiling'),
+(7,  'Welding'),
+(8,  'Roofing'),
+(9,  'Waterproofing'),
+(10, 'Landscaping'),
+(11, 'Aluminium Work'),
+(12, 'Interior Design');
+
+INSERT INTO materials (material_id, name, unit) VALUES
+(1, 'Sand', 'unit'),
+(2, 'Cement', 'unit'),
+(3, 'Gravel / Metal', 'unit'),
+(4, 'Stone / Rubble', 'unit'),
+(5, 'Cement Blocks', 'unit'),
+(6, 'Timber', 'unit'),
+(7, 'Bricks', 'unit'),
+(8, 'Glass', 'unit'),
+(9, 'Other', 'unit');

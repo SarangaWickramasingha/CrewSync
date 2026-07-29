@@ -61,3 +61,20 @@ function requireRole(string|array $allowedRoles): array {
 
     return $payload;
 }
+    
+function optionalAuth(): ?array {
+
+    $token = $_COOKIE[JWT_COOKIE_NAME] ?? null;
+
+    if (!$token) {
+        return null; // guest
+    }
+
+    $payload = verifyToken($token);
+
+    if (!$payload) {
+        return null; // invalid/expired token — treat as guest
+    }
+
+    return $payload; // contains: user_id, name, role, iat, exp
+}
