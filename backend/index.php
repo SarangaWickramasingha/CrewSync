@@ -198,6 +198,9 @@ elseif ($uri === '/api/provider/job-requests' && $method === 'GET') {
 elseif (preg_match('#^/api/provider/job-requests/(\d+)/respond$#', $uri, $matches) && $method === 'PUT') {
     require_once __DIR__ . '/routes/provider.php';
     respondToProviderJobRequest($matches[1]);
+}elseif ($uri === '/api/provider/timeline' && $method === 'GET') {
+    require_once __DIR__ . '/routes/provider.php';
+    getProviderTimeline();
 }
 
 else {

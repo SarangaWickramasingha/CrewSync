@@ -31,3 +31,7 @@ function respondToProviderJobRequest($requestId) {
     $controller = new ProviderController();
     $controller->respondToJobRequest($requestId);
 }
+function getProviderTimeline() {
+    $controller = new ProviderController();
+    $controller->getTimeline();
+}

@@ -10,7 +10,7 @@ class ProviderController {
         $this->db = Database::getInstance()->getConnection();
     }
 
-    
+
     // ── TOGGLE AVAILABILITY STATUS ────────────────────────────────────────────
     public function toggleAvailability() {
         $user = requireRole('service_provider');
@@ -337,11 +337,85 @@ class ProviderController {
                 $stmt->execute([$request['task_id'], $providerId]);
             }
         }
+        
 
         echo json_encode([
             "success" => true,
             "status"  => $newStatus === 'accepted' ? 'Accepted' : 'Declined'
         ]);
+    }
+    // ── GET FULL TIMELINE (all projects the provider is assigned to) ──────────
+    public function getTimeline() {
+        $user = requireRole('service_provider');
+
+        $stmt = $this->db->prepare("SELECT provider_id FROM service_providers WHERE user_id = ?");
+        $stmt->execute([$user['user_id']]);
+        $provider = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$provider) {
+            http_response_code(404);
+            echo json_encode(["success" => false, "message" => "Service provider profile not found"]);
+            return;
+        }
+
+        $providerId = $provider['provider_id'];
+
+        $stmt = $this->db->prepare("
+            SELECT DISTINCT p.project_id, p.project_name, p.is_finished
+            FROM task_assignments ta
+            JOIN tasks t ON t.task_id = ta.task_id
+            JOIN projects p ON p.project_id = t.project_id
+            WHERE ta.provider_id = ?
+            ORDER BY p.project_id DESC
+        ");
+        $stmt->execute([$providerId]);
+        $projects = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $result = [];
+        foreach ($projects as $proj) {
+            $stmt = $this->db->prepare("
+                SELECT task_id, task_name, start_date, end_date, is_finished
+                FROM tasks
+                WHERE project_id = ?
+                ORDER BY start_date ASC
+            ");
+            $stmt->execute([$proj['project_id']]);
+            $allTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $stmt = $this->db->prepare("
+                SELECT t.task_id, t.task_name
+                FROM task_assignments ta
+                JOIN tasks t ON t.task_id = ta.task_id
+                WHERE ta.provider_id = ? AND t.project_id = ?
+            ");
+            $stmt->execute([$providerId, $proj['project_id']]);
+            $assigned = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $assignedNames = array_column($assigned, 'task_name');
+
+            $tasksFormatted = array_map(function ($t) {
+                $status = $t['is_finished'] ? 'done' : 'pending';
+                $dates = $t['start_date']
+                    ? ($t['end_date'] ? "{$t['start_date']} – {$t['end_date']}" : "Starts {$t['start_date']}")
+                    : 'Dates not set';
+                return [
+                    "task_id" => $t['task_id'],
+                    "name"    => $t['task_name'],
+                    "dates"   => $dates,
+                    "status"  => $status,
+                    "label"   => $t['is_finished'] ? 'Done' : 'Pending',
+                ];
+            }, $allTasks);
+
+            $result[] = [
+                "project_id"          => $proj['project_id'],
+                "project_name"        => $proj['project_name'],
+                "project_status"      => $proj['is_finished'] ? 'Completed' : 'In Progress',
+                "tasks"               => $tasksFormatted,
+                "assigned_task_names" => $assignedNames,
+            ];
+        }
+
+        echo json_encode(["success" => true, "projects" => $result]);
     }
 
 }
