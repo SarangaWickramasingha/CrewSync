@@ -183,6 +183,22 @@ elseif ($uri === '/api/provider/dashboard-stats' && $method === 'GET') {
     require_once __DIR__ . '/routes/provider.php';
     getProviderDashboardStats();
 }
+elseif ($uri === '/api/provider/current-work' && $method === 'GET') {
+    require_once __DIR__ . '/routes/provider.php';
+    getProviderCurrentWork();
+}
+elseif ($uri === '/api/provider/recent-reviews' && $method === 'GET') {
+    require_once __DIR__ . '/routes/provider.php';
+    getProviderRecentReviews();
+}
+elseif ($uri === '/api/provider/job-requests' && $method === 'GET') {
+    require_once __DIR__ . '/routes/provider.php';
+    getProviderJobRequests();
+}
+elseif (preg_match('#^/api/provider/job-requests/(\d+)/respond$#', $uri, $matches) && $method === 'PUT') {
+    require_once __DIR__ . '/routes/provider.php';
+    respondToProviderJobRequest($matches[1]);
+}
 
 else {
     http_response_code(404);
