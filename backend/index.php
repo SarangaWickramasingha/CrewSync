@@ -170,6 +170,20 @@ elseif (preg_match('#^/api/admin/projects/(\d+)$#', $uri, $matches) && $method =
 }
 
 
+// ── SERVICE PROVIDER ─────────────────────────────────────────────────────────
+elseif ($uri === '/api/provider/toggle-availability' && $method === 'PUT') {
+    require_once __DIR__ . '/routes/provider.php';
+    toggleProviderAvailability();
+}
+elseif ($uri === '/api/provider/availability' && $method === 'GET') {
+    require_once __DIR__ . '/routes/provider.php';
+    getProviderAvailability();
+}
+elseif ($uri === '/api/provider/dashboard-stats' && $method === 'GET') {
+    require_once __DIR__ . '/routes/provider.php';
+    getProviderDashboardStats();
+}
+
 else {
     http_response_code(404);
     echo json_encode([
