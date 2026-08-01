@@ -418,4 +418,285 @@ class ProviderController {
         echo json_encode(["success" => true, "projects" => $result]);
     }
 
+    // ── GET ALL REVIEWS (full list, with photos + reply) ──────────────────────
+    public function getAllReviews() {
+        $user = requireRole('service_provider');
+
+        $stmt = $this->db->prepare("SELECT provider_id FROM service_providers WHERE user_id = ?");
+        $stmt->execute([$user['user_id']]);
+        $provider = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$provider) {
+            http_response_code(404);
+            echo json_encode(["success" => false, "message" => "Service provider profile not found"]);
+            return;
+        }
+
+        $stmt = $this->db->prepare("
+            SELECT r.review_id, r.rating, r.comment, r.review_date, r.provider_reply,
+                   u.fname, u.lname
+            FROM reviews r
+            JOIN property_owners po ON po.owner_id = r.owner_id
+            JOIN users u ON u.user_id = po.user_id
+            WHERE r.provider_id = ?
+            ORDER BY r.review_date DESC
+        ");
+        $stmt->execute([$provider['provider_id']]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $reviews = [];
+        foreach ($rows as $r) {
+            $stmt2 = $this->db->prepare("SELECT photo_id, file_path FROM review_photos WHERE review_id = ?");
+            $stmt2->execute([$r['review_id']]);
+            $photos = $stmt2->fetchAll(PDO::FETCH_ASSOC);
+
+            $reviews[] = [
+                "id"       => $r['review_id'],
+                "name"     => trim($r['fname'] . ' ' . $r['lname']),
+                "stars"    => (int) $r['rating'],
+                "date"     => date('F j, Y', strtotime($r['review_date'])),
+                "text"     => $r['comment'],
+                "reply"    => $r['provider_reply'],
+                "photos"   => array_map(fn($p) => [
+                    "photo_id" => $p['photo_id'],
+                    "url"      => "http://localhost/CrewSync-backend/backend/uploads/" . $p['file_path'],
+                ], $photos),
+            ];
+        }
+
+        echo json_encode(["success" => true, "reviews" => $reviews]);
+    }
+
+    // ── UPLOAD REVIEW PHOTOS ────────────────────────────────────────────────────
+    public function uploadReviewPhotos($reviewId) {
+        $user = requireRole('service_provider');
+
+        $stmt = $this->db->prepare("SELECT provider_id FROM service_providers WHERE user_id = ?");
+        $stmt->execute([$user['user_id']]);
+        $provider = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$provider) {
+            http_response_code(404);
+            echo json_encode(["success" => false, "message" => "Service provider profile not found"]);
+            return;
+        }
+
+        // Confirm this review belongs to this provider
+        $stmt = $this->db->prepare("SELECT review_id FROM reviews WHERE review_id = ? AND provider_id = ?");
+        $stmt->execute([$reviewId, $provider['provider_id']]);
+        if (!$stmt->fetch(PDO::FETCH_ASSOC)) {
+            http_response_code(403);
+            echo json_encode(["success" => false, "message" => "You don't have permission to add photos to this review"]);
+            return;
+        }
+
+        if (empty($_FILES['photos'])) {
+            http_response_code(400);
+            echo json_encode(["success" => false, "message" => "No files uploaded"]);
+            return;
+        }
+
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+        $maxSize = 5 * 1024 * 1024; // 5MB
+        $uploadDir = __DIR__ . '/../uploads/review_photos/';
+        $uploaded = [];
+
+        $fileCount = count($_FILES['photos']['name']);
+        for ($i = 0; $i < $fileCount; $i++) {
+            if ($_FILES['photos']['error'][$i] !== UPLOAD_ERR_OK) continue;
+
+            $tmpPath = $_FILES['photos']['tmp_name'][$i];
+            $mimeType = mime_content_type($tmpPath);
+            $size = $_FILES['photos']['size'][$i];
+
+            if (!in_array($mimeType, $allowedTypes) || $size > $maxSize) continue;
+
+            $ext = pathinfo($_FILES['photos']['name'][$i], PATHINFO_EXTENSION);
+            $safeExt = preg_replace('/[^a-zA-Z0-9]/', '', $ext);
+            $filename = "review_{$reviewId}_" . time() . "_" . bin2hex(random_bytes(4)) . "." . $safeExt;
+
+            if (move_uploaded_file($tmpPath, $uploadDir . $filename)) {
+                $relativePath = "review_photos/" . $filename;
+                $stmt = $this->db->prepare("INSERT INTO review_photos (review_id, file_path) VALUES (?, ?)");
+                $stmt->execute([$reviewId, $relativePath]);
+                $uploaded[] = [
+                    "photo_id" => $this->db->lastInsertId(),
+                    "url"      => "http://localhost/CrewSync-backend/backend/uploads/" . $relativePath,
+                ];
+            }
+        }
+
+        echo json_encode(["success" => true, "photos" => $uploaded]);
+    }
+
+    // ── DELETE REVIEW PHOTO ─────────────────────────────────────────────────────
+    public function deleteReviewPhoto($photoId) {
+        $user = requireRole('service_provider');
+
+        $stmt = $this->db->prepare("SELECT provider_id FROM service_providers WHERE user_id = ?");
+        $stmt->execute([$user['user_id']]);
+        $provider = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $stmt = $this->db->prepare("
+            SELECT rp.file_path FROM review_photos rp
+            JOIN reviews r ON r.review_id = rp.review_id
+            WHERE rp.photo_id = ? AND r.provider_id = ?
+        ");
+        $stmt->execute([$photoId, $provider['provider_id']]);
+        $photo = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$photo) {
+            http_response_code(404);
+            echo json_encode(["success" => false, "message" => "Photo not found"]);
+            return;
+        }
+
+        $filePath = __DIR__ . '/../uploads/' . $photo['file_path'];
+        if (file_exists($filePath)) unlink($filePath);
+
+        $stmt = $this->db->prepare("DELETE FROM review_photos WHERE photo_id = ?");
+        $stmt->execute([$photoId]);
+
+        echo json_encode(["success" => true]);
+    }
+
+
+// ── GET PROFILE (personal info + skills) ──────────────────────────────────
+    public function getProfile() {
+        $user = requireRole('service_provider');
+
+        $stmt = $this->db->prepare("
+            SELECT u.fname, u.lname, u.district, sp.provider_id, sp.bio, sp.charge_per_day, sp.willing_outside_region
+            FROM users u
+            JOIN service_providers sp ON sp.user_id = u.user_id
+            WHERE u.user_id = ?
+        ");
+        $stmt->execute([$user['user_id']]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$row) {
+            http_response_code(404);
+            echo json_encode(["success" => false, "message" => "Service provider profile not found"]);
+            return;
+        }
+
+        $stmt = $this->db->prepare("
+            SELECT skill_id, experience_yr, description FROM provider_skills WHERE provider_id = ?
+        ");
+        $stmt->execute([$row['provider_id']]);
+        $skills = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        echo json_encode([
+            "success" => true,
+            "personal_info" => [
+                "full_name"  => trim($row['fname'] . ' ' . $row['lname']),
+                "district"   => $row['district'],
+                "daily_rate" => $row['charge_per_day'],
+                "bio"        => $row['bio'],
+                "out_region" => (bool) $row['willing_outside_region'],
+            ],
+            "skills" => array_map(fn($s) => [
+                "skill_id" => (int) $s['skill_id'],
+                "years"    => (int) $s['experience_yr'],
+                "desc"     => $s['description'],
+            ], $skills),
+        ]);
+    }
+
+    // ── UPDATE PERSONAL INFO ───────────────────────────────────────────────────
+    public function updatePersonalInfo() {
+        $user = requireRole('service_provider');
+
+        $data = json_decode(file_get_contents("php://input"), true) ?? [];
+
+        $fullName  = trim($data['full_name'] ?? '');
+        $district  = trim($data['district'] ?? '');
+        $dailyRate = floatval($data['daily_rate'] ?? 0);
+        $bio       = trim($data['bio'] ?? '');
+        $outRegion = !empty($data['out_region']) ? 1 : 0;
+
+        if (!$fullName || !$district) {
+            http_response_code(400);
+            echo json_encode(["success" => false, "message" => "Full name and district are required"]);
+            return;
+        }
+
+        // Split into first name + rest as last name
+        $parts = explode(' ', $fullName, 2);
+        $fname = $parts[0];
+        $lname = $parts[1] ?? '';
+
+        $stmt = $this->db->prepare("UPDATE users SET fname = ?, lname = ?, district = ? WHERE user_id = ?");
+        $stmt->execute([$fname, $lname, $district, $user['user_id']]);
+
+        $stmt = $this->db->prepare("
+            UPDATE service_providers SET bio = ?, charge_per_day = ?, willing_outside_region = ? WHERE user_id = ?
+        ");
+        $stmt->execute([$bio, $dailyRate, $outRegion, $user['user_id']]);
+
+        echo json_encode(["success" => true]);
+    }
+
+    // ── ADD OR UPDATE A SKILL (upsert by skill_id) ─────────────────────────────
+    public function upsertSkill() {
+        $user = requireRole('service_provider');
+
+        $stmt = $this->db->prepare("SELECT provider_id FROM service_providers WHERE user_id = ?");
+        $stmt->execute([$user['user_id']]);
+        $provider = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$provider) {
+            http_response_code(404);
+            echo json_encode(["success" => false, "message" => "Service provider profile not found"]);
+            return;
+        }
+
+        $data = json_decode(file_get_contents("php://input"), true) ?? [];
+        $skillId = intval($data['skill_id'] ?? 0);
+        $years   = intval($data['years'] ?? 1);
+        $desc    = trim($data['description'] ?? '');
+
+        if (!$skillId) {
+            http_response_code(400);
+            echo json_encode(["success" => false, "message" => "skill_id is required"]);
+            return;
+        }
+
+        $stmt = $this->db->prepare("SELECT id FROM provider_skills WHERE provider_id = ? AND skill_id = ?");
+        $stmt->execute([$provider['provider_id'], $skillId]);
+        $existing = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($existing) {
+            $stmt = $this->db->prepare("UPDATE provider_skills SET experience_yr = ?, description = ? WHERE id = ?");
+            $stmt->execute([$years, $desc, $existing['id']]);
+        } else {
+            $stmt = $this->db->prepare("
+                INSERT INTO provider_skills (provider_id, skill_id, experience_yr, description) VALUES (?, ?, ?, ?)
+            ");
+            $stmt->execute([$provider['provider_id'], $skillId, $years, $desc]);
+        }
+
+        echo json_encode(["success" => true]);
+    }
+
+    // ── REMOVE A SKILL ──────────────────────────────────────────────────────────
+    public function removeSkill($skillId) {
+        $user = requireRole('service_provider');
+
+        $stmt = $this->db->prepare("SELECT provider_id FROM service_providers WHERE user_id = ?");
+        $stmt->execute([$user['user_id']]);
+        $provider = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$provider) {
+            http_response_code(404);
+            echo json_encode(["success" => false, "message" => "Service provider profile not found"]);
+            return;
+        }
+
+        $stmt = $this->db->prepare("DELETE FROM provider_skills WHERE provider_id = ? AND skill_id = ?");
+        $stmt->execute([$provider['provider_id'], $skillId]);
+
+        echo json_encode(["success" => true]);
+    }
+
 }

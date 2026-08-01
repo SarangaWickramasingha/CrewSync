@@ -198,10 +198,41 @@ elseif ($uri === '/api/provider/job-requests' && $method === 'GET') {
 elseif (preg_match('#^/api/provider/job-requests/(\d+)/respond$#', $uri, $matches) && $method === 'PUT') {
     require_once __DIR__ . '/routes/provider.php';
     respondToProviderJobRequest($matches[1]);
-}elseif ($uri === '/api/provider/timeline' && $method === 'GET') {
+}
+elseif ($uri === '/api/provider/timeline' && $method === 'GET') {
     require_once __DIR__ . '/routes/provider.php';
     getProviderTimeline();
 }
+elseif ($uri === '/api/provider/reviews/all' && $method === 'GET') {
+    require_once __DIR__ . '/routes/provider.php';
+    getProviderAllReviews();
+}
+elseif (preg_match('#^/api/reviews/(\d+)/photos$#', $uri, $matches) && $method === 'POST') {
+    require_once __DIR__ . '/routes/provider.php';
+    uploadProviderReviewPhotos($matches[1]);
+}
+elseif (preg_match('#^/api/review-photos/(\d+)$#', $uri, $matches) && $method === 'DELETE') {
+    require_once __DIR__ . '/routes/provider.php';
+    deleteProviderReviewPhoto($matches[1]);
+}
+elseif ($uri === '/api/provider/profile' && $method === 'GET') {
+    require_once __DIR__ . '/routes/provider.php';
+    getProviderProfile();
+}
+elseif ($uri === '/api/provider/profile' && $method === 'PUT') {
+    require_once __DIR__ . '/routes/provider.php';
+    updateProviderPersonalInfo();
+}
+elseif ($uri === '/api/provider/skills' && $method === 'POST') {
+    require_once __DIR__ . '/routes/provider.php';
+    upsertProviderSkill();
+}
+elseif (preg_match('#^/api/provider/skills/(\d+)$#', $uri, $matches) && $method === 'DELETE') {
+    require_once __DIR__ . '/routes/provider.php';
+    removeProviderSkill($matches[1]);
+}
+
+
 
 else {
     http_response_code(404);
