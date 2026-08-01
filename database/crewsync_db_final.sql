@@ -94,6 +94,7 @@ CREATE TABLE provider_skills (
     UNIQUE KEY uq_provider_skill (provider_id, skill_id)
 );
 
+ALTER TABLE provider_skills ADD COLUMN description VARCHAR(500) NULL AFTER experience_yr;
 -- ============================================================
 -- 8. HARDWARE STORE DETAILS
 -- ============================================================
@@ -253,6 +254,18 @@ CREATE TABLE reviews (
     CONSTRAINT fk_rev_provider FOREIGN KEY (provider_id)
         REFERENCES service_providers(provider_id) ON DELETE CASCADE
 );
+
+-- New table for review photos
+CREATE TABLE review_photos (
+    photo_id INT AUTO_INCREMENT PRIMARY KEY,
+    review_id INT NOT NULL,
+    file_path VARCHAR(255) NOT NULL,
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (review_id) REFERENCES reviews(review_id)
+);
+
+-- Reviews table needs a reply column (doesn't exist yet)
+ALTER TABLE reviews ADD COLUMN provider_reply TEXT NULL;
 
 -- ============================================================
 -- 17. FEEDBACK (user sends to admin)
