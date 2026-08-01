@@ -359,3 +359,7 @@ INSERT INTO materials (material_id, name, unit) VALUES
 (7, 'Bricks', 'unit'),
 (8, 'Glass', 'unit'),
 (9, 'Other', 'unit');
+
+ALTER TABLE users
+ADD COLUMN status ENUM('active','suspended') NOT NULL DEFAULT 'active';
+
