@@ -71,6 +71,10 @@ elseif (preg_match('#^/api/tasks/(\d+)/toggle-finish$#', $uri, $matches) && $met
     require_once __DIR__ . '/routes/tasks.php';
     toggleTaskFinish($matches[1]);
 }
+elseif (preg_match('#^/api/tasks/(\d+)/daily-status$#', $uri, $matches) && $method === 'PUT') {
+    require_once __DIR__ . '/routes/tasks.php';
+    saveTaskDailyStatus($matches[1]);
+}
 elseif (preg_match('#^/api/tasks/(\d+)$#', $uri, $matches) && $method === 'DELETE') {
     require_once __DIR__ . '/routes/tasks.php';
     deleteTask($matches[1]);
@@ -230,6 +234,23 @@ elseif ($uri === '/api/provider/skills' && $method === 'POST') {
 elseif (preg_match('#^/api/provider/skills/(\d+)$#', $uri, $matches) && $method === 'DELETE') {
     require_once __DIR__ . '/routes/provider.php';
     removeProviderSkill($matches[1]);
+}
+
+
+
+
+// ── MATERIAL SUPPLIER ─────────────────────────────────────────────────────────
+elseif ($uri === '/api/supplier/products' && $method === 'GET') {
+    require_once __DIR__ . '/routes/supplier.php';
+    getSupplierProducts();
+}
+elseif ($uri === '/api/supplier/products' && $method === 'POST') {
+    require_once __DIR__ . '/routes/supplier.php';
+    upsertSupplierProduct();
+}
+elseif (preg_match('#^/api/supplier/products/(\d+)$#', $uri, $matches) && $method === 'DELETE') {
+    require_once __DIR__ . '/routes/supplier.php';
+    removeSupplierProduct($matches[1]);
 }
 
 

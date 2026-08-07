@@ -188,6 +188,23 @@ CREATE TABLE tasks (
 
 
 -- ============================================================
+-- 12.5 TASK DAILY STATUS (per-day status on the timeline)
+-- ============================================================
+
+CREATE TABLE task_daily_status (
+    status_id INT AUTO_INCREMENT PRIMARY KEY,
+    task_id INT NOT NULL,
+    status_date DATE NOT NULL,
+    status ENUM('not_started', 'in_progress', 'done', 'blocked') NOT NULL DEFAULT 'not_started',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (task_id) REFERENCES tasks(task_id) ON DELETE CASCADE,
+
+    UNIQUE KEY unique_task_date (task_id, status_date)
+);
+
+
+-- ============================================================
 -- 13. TASK ASSIGNMENTS (provider assigned to task)
 -- ============================================================
 

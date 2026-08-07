@@ -62,9 +62,32 @@ class ProjectController {
         $stmt->execute([$projectId]);
         $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+        // Attach saved daily statuses from task_daily_status
+        // methan status eka save karana ewa load karanwa
+        $taskIds = array_column($tasks, 'task_id');
+        $statusesByTask = [];
+        if (!empty($taskIds)) {
+            $in = implode(',', array_fill(0, count($taskIds), '?'));
+            $stmt = $this->db->prepare("
+                SELECT task_id, status_date, status
+                FROM task_daily_status
+                WHERE task_id IN ($in)
+                ORDER BY status_date ASC
+            ");
+            $stmt->execute($taskIds);
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $s) {
+                $statusesByTask[$s['task_id']][] = [
+                    "date"   => $s['status_date'],
+                    "status" => $s['status']
+                ];
+            }
+        }
+
         foreach ($tasks as &$t) {
             $t['status'] = $t['is_finished'] ? 'completed' : 'ongoing';
+            $t['daily_statuses'] = $statusesByTask[$t['task_id']] ?? [];
         }
+        unset($t);
 
         echo json_encode([
             "success" => true,
