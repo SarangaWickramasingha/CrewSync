@@ -16,6 +16,11 @@ function toggleTaskFinish($taskId) {
     $controller->toggleFinish($taskId);
 }
 
+function saveTaskDailyStatus($taskId) {
+    $controller = new TaskController();
+    $controller->saveDailyStatus($taskId);
+}
+
 function deleteTask($taskId) {
     $controller = new TaskController();
     $controller->delete($taskId);

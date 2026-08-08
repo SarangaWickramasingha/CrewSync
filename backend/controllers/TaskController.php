@@ -134,6 +134,49 @@ class TaskController {
         ]);
     }
 
+    // ── SAVE DAILY STATUS (upsert into task_daily_status) ─────────────────────
+    // status eka save karana fun eka eka eka task ekata
+    public function saveDailyStatus($taskId) {
+        $user = requireRole('property_owner');
+        $task = $this->getOwnedTask($taskId, $user['user_id']);
+
+        if (!$task) {
+            http_response_code(404);
+            echo json_encode(["success" => false, "message" => "Task not found"]);
+            return;
+        }
+
+        $data = json_decode(file_get_contents("php://input"), true);
+        $statuses = $data['statuses'] ?? null;
+
+        if (!is_array($statuses) || empty($statuses)) {
+            http_response_code(400);
+            echo json_encode(["success" => false, "message" => "statuses array is required"]);
+            return;
+        }
+
+        $validStatuses = ['not_started', 'in_progress', 'done', 'blocked'];
+        $stmt = $this->db->prepare("
+            INSERT INTO task_daily_status (task_id, status_date, status)
+            VALUES (?, ?, ?)
+            ON DUPLICATE KEY UPDATE status = VALUES(status)
+        ");
+
+        $saved = 0;
+        foreach ($statuses as $entry) {
+            $date = $entry['date'] ?? null;
+            $status = $entry['status'] ?? null;
+
+            if (!is_string($date) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) continue;
+            if (!in_array($status, $validStatuses, true)) continue;
+
+            $stmt->execute([$taskId, $date, $status]);
+            $saved++;
+        }
+
+        echo json_encode(["success" => true, "saved" => $saved]);
+    }
+
     // ── DELETE TASK ────────────────────────────────────────────────────────────
     public function delete($taskId) {
         $user = requireRole('property_owner');
