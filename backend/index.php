@@ -111,6 +111,60 @@ elseif (preg_match('#^/api/projects/(\d+)/comments$#', $uri, $matches) && $metho
 }
 
 
+// ── MATERIAL SUPPLIER ─────────────────────────────────────────────────────────
+elseif ($uri === '/api/supplier/products' && $method === 'GET') {
+    require_once __DIR__ . '/routes/supplier.php';
+    supplierGetMyProducts();
+}
+elseif ($uri === '/api/supplier/products' && $method === 'POST') {
+    require_once __DIR__ . '/routes/supplier.php';
+    supplierSaveProduct();
+}
+elseif (preg_match('#^/api/supplier/products/(\d+)$#', $uri, $matches) && $method === 'DELETE') {
+    require_once __DIR__ . '/routes/supplier.php';
+    supplierDeleteProduct($matches[1]);
+}
+elseif ($uri === '/api/supplier/orders' && $method === 'GET') {
+    require_once __DIR__ . '/routes/supplier.php';
+    supplierGetMyOrders();
+}
+elseif (preg_match('#^/api/supplier/orders/(\d+)/status$#', $uri, $matches) && $method === 'PUT') {
+    require_once __DIR__ . '/routes/supplier.php';
+    supplierUpdateOrderStatus($matches[1]);
+}
+elseif ($uri === '/api/supplier/profile' && $method === 'GET') {
+    require_once __DIR__ . '/routes/supplier.php';
+    supplierGetMyProfile();
+}
+elseif ($uri === '/api/supplier/profile' && $method === 'PUT') {
+    require_once __DIR__ . '/routes/supplier.php';
+    supplierUpdateMyProfile();
+}
+
+
+// ── SERVICE PROVIDER ──────────────────────────────────────────────────────────
+elseif ($uri === '/api/provider/reviews/all' && $method === 'GET') {
+    require_once __DIR__ . '/routes/provider.php';
+    providerGetAllReviews();
+}
+elseif (preg_match('#^/api/reviews/(\d+)/photos$#', $uri, $matches) && $method === 'POST') {
+    require_once __DIR__ . '/routes/provider.php';
+    providerUploadReviewPhotos($matches[1]);
+}
+elseif (preg_match('#^/api/review-photos/(\d+)$#', $uri, $matches) && $method === 'DELETE') {
+    require_once __DIR__ . '/routes/provider.php';
+    providerDeleteReviewPhoto($matches[1]);
+}
+elseif ($uri === '/api/provider/job-requests' && $method === 'GET') {
+    require_once __DIR__ . '/routes/provider.php';
+    providerGetJobRequests();
+}
+elseif (preg_match('#^/api/provider/job-requests/(\d+)/respond$#', $uri, $matches) && $method === 'PUT') {
+    require_once __DIR__ . '/routes/provider.php';
+    providerRespondToJobRequest($matches[1]);
+}
+
+
 // ── ADMIN ────────────────────────────────────────────────────────────────────
 elseif ($uri === '/api/admin/stats' && $method === 'GET') {
     require_once __DIR__ . '/routes/admin.php';
