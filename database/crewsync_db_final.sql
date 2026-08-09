@@ -308,6 +308,8 @@ CREATE TABLE reports (
         REFERENCES tasks(task_id)       ON DELETE SET NULL
 );
 
+ALTER TABLE reports 
+MODIFY COLUMN report_type ENUM('task', 'project') DEFAULT 'project';
 -- ==============================================================
 -- 19. forum   --not added to ER 
 -- ==============================================================

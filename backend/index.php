@@ -89,6 +89,7 @@ else if ($uri === '/api/stats/summary' && $method === 'GET') {
     getStatsSummary();
 }
 
+<<<<<<< Updated upstream
 // else if ($uri === '/api/projects/create' && $method === 'POST') {
 //     require_once __DIR__ . '/routes/projects.php';
 //     createProjectRoute();
@@ -105,6 +106,24 @@ else if ($uri === '/api/feedback/status' && $method === 'PUT') {
 }
 
 else if (preg_match('#^/api/projects/(\d+)/comments$#', $uri, $matches) && $method === 'GET') {
+=======
+// ── REPORTS ───────────────────────────────────────────────────────────────────
+elseif (preg_match('#^/api/reports/project/(\d+)$#', $uri, $matches) && $method === 'GET') {
+    require_once __DIR__ . '/routes/reports.php';
+    listProjectReports($matches[1]);
+}
+elseif (preg_match('#^/api/reports/task/(\d+)/generate$#', $uri, $matches) && $method === 'POST') {
+    require_once __DIR__ . '/routes/reports.php';
+    generateTaskReport($matches[1]);
+}
+elseif (preg_match('#^/api/reports/project/(\d+)/generate$#', $uri, $matches) && $method === 'POST') {
+    require_once __DIR__ . '/routes/reports.php';
+    generateProjectReport($matches[1]);
+}
+
+// ── COMMENTS ─────────────────────────────────────────────────────────────────
+elseif (preg_match('#^/api/projects/(\d+)/comments$#', $uri, $matches) && $method === 'GET') {
+>>>>>>> Stashed changes
     require_once __DIR__ . '/routes/comments.php';
     getProjectComments((int)$matches[1]);
 }
@@ -115,6 +134,167 @@ else if (preg_match('#^/api/projects/(\d+)/comments$#', $uri, $matches) && $meth
 }
 
 
+<<<<<<< Updated upstream
+=======
+// ── ADMIN ────────────────────────────────────────────────────────────────────
+elseif ($uri === '/api/admin/stats' && $method === 'GET') {
+    require_once __DIR__ . '/routes/admin.php';
+    adminGetStats();
+}
+elseif ($uri === '/api/admin/users' && $method === 'GET') {
+    require_once __DIR__ . '/routes/admin.php';
+    adminGetAllUsers();
+}
+elseif ($uri === '/api/admin/users' && $method === 'POST') {
+    require_once __DIR__ . '/routes/admin.php';
+    adminCreateUser();
+}
+elseif (preg_match('#^/api/admin/users/(\d+)$#', $uri, $matches) && $method === 'GET') {
+    require_once __DIR__ . '/routes/admin.php';
+    adminGetUserById($matches[1]);
+}
+elseif (preg_match('#^/api/admin/users/(\d+)$#', $uri, $matches) && $method === 'PUT') {
+    require_once __DIR__ . '/routes/admin.php';
+    adminUpdateUser($matches[1]);
+}
+elseif (preg_match('#^/api/admin/users/(\d+)$#', $uri, $matches) && $method === 'DELETE') {
+    require_once __DIR__ . '/routes/admin.php';
+    adminDeleteUser($matches[1]);
+}
+elseif ($uri === '/api/admin/users/property-owners' && $method === 'GET') {
+    require_once __DIR__ . '/routes/admin.php';
+    adminGetPropertyOwners();
+}
+elseif ($uri === '/api/admin/users/service-providers' && $method === 'GET') {
+    require_once __DIR__ . '/routes/admin.php';
+    adminGetServiceProviders();
+}
+elseif ($uri === '/api/admin/users/material-suppliers' && $method === 'GET') {
+    require_once __DIR__ . '/routes/admin.php';
+    adminGetMaterialSuppliers();
+}
+elseif ($uri === '/api/admin/reviews' && $method === 'GET') {
+    require_once __DIR__ . '/routes/admin.php';
+    adminGetAllReviews();
+}
+elseif (preg_match('#^/api/admin/reviews/(\d+)$#', $uri, $matches) && $method === 'DELETE') {
+    require_once __DIR__ . '/routes/admin.php';
+    adminDeleteReview($matches[1]);
+}
+elseif ($uri === '/api/admin/feedback' && $method === 'GET') {
+    require_once __DIR__ . '/routes/admin.php';
+    adminGetAllFeedback();
+}
+elseif (preg_match('#^/api/admin/feedback/(\d+)$#', $uri, $matches) && $method === 'PUT') {
+    require_once __DIR__ . '/routes/admin.php';
+    adminUpdateFeedback($matches[1]);
+}
+elseif ($uri === '/api/admin/projects' && $method === 'GET') {
+    require_once __DIR__ . '/routes/admin.php';
+    adminGetAllProjects();
+}
+elseif (preg_match('#^/api/admin/projects/(\d+)$#', $uri, $matches) && $method === 'GET') {
+    require_once __DIR__ . '/routes/admin.php';
+    adminGetProjectWithTasks($matches[1]);
+}
+
+
+// ── SERVICE PROVIDER ─────────────────────────────────────────────────────────
+elseif ($uri === '/api/provider/toggle-availability' && $method === 'PUT') {
+    require_once __DIR__ . '/routes/provider.php';
+    toggleProviderAvailability();
+}
+elseif ($uri === '/api/provider/availability' && $method === 'GET') {
+    require_once __DIR__ . '/routes/provider.php';
+    getProviderAvailability();
+}
+elseif ($uri === '/api/provider/dashboard-stats' && $method === 'GET') {
+    require_once __DIR__ . '/routes/provider.php';
+    getProviderDashboardStats();
+}
+elseif ($uri === '/api/provider/current-work' && $method === 'GET') {
+    require_once __DIR__ . '/routes/provider.php';
+    getProviderCurrentWork();
+}
+elseif ($uri === '/api/provider/recent-reviews' && $method === 'GET') {
+    require_once __DIR__ . '/routes/provider.php';
+    getProviderRecentReviews();
+}
+elseif ($uri === '/api/provider/job-requests' && $method === 'GET') {
+    require_once __DIR__ . '/routes/provider.php';
+    getProviderJobRequests();
+}
+elseif (preg_match('#^/api/provider/job-requests/(\d+)/respond$#', $uri, $matches) && $method === 'PUT') {
+    require_once __DIR__ . '/routes/provider.php';
+    respondToProviderJobRequest($matches[1]);
+}
+elseif ($uri === '/api/provider/timeline' && $method === 'GET') {
+    require_once __DIR__ . '/routes/provider.php';
+    getProviderTimeline();
+}
+elseif ($uri === '/api/provider/reviews/all' && $method === 'GET') {
+    require_once __DIR__ . '/routes/provider.php';
+    getProviderAllReviews();
+}
+elseif (preg_match('#^/api/reviews/(\d+)/photos$#', $uri, $matches) && $method === 'POST') {
+    require_once __DIR__ . '/routes/provider.php';
+    uploadProviderReviewPhotos($matches[1]);
+}
+elseif (preg_match('#^/api/review-photos/(\d+)$#', $uri, $matches) && $method === 'DELETE') {
+    require_once __DIR__ . '/routes/provider.php';
+    deleteProviderReviewPhoto($matches[1]);
+}
+elseif ($uri === '/api/provider/profile' && $method === 'GET') {
+    require_once __DIR__ . '/routes/provider.php';
+    getProviderProfile();
+}
+elseif ($uri === '/api/provider/profile' && $method === 'PUT') {
+    require_once __DIR__ . '/routes/provider.php';
+    updateProviderPersonalInfo();
+}
+elseif ($uri === '/api/provider/skills' && $method === 'POST') {
+    require_once __DIR__ . '/routes/provider.php';
+    upsertProviderSkill();
+}
+elseif (preg_match('#^/api/provider/skills/(\d+)$#', $uri, $matches) && $method === 'DELETE') {
+    require_once __DIR__ . '/routes/provider.php';
+    removeProviderSkill($matches[1]);
+}
+
+
+
+
+// ── SEARCH ────────────────────────────────────────────────────────────────────
+elseif ($uri === '/api/search/providers' && $method === 'GET') {
+    require_once __DIR__ . '/routes/search.php';
+    searchProviders();
+}
+
+// ── SERVICE REQUESTS ─────────────────────────────────────────────────────────
+elseif ($uri === '/api/service-requests' && $method === 'POST') {
+    require_once __DIR__ . '/routes/service_requests.php';
+    createServiceRequest();
+}
+
+
+
+// ── MATERIAL SUPPLIER ─────────────────────────────────────────────────────────
+elseif ($uri === '/api/supplier/products' && $method === 'GET') {
+    require_once __DIR__ . '/routes/supplier.php';
+    getSupplierProducts();
+}
+elseif ($uri === '/api/supplier/products' && $method === 'POST') {
+    require_once __DIR__ . '/routes/supplier.php';
+    upsertSupplierProduct();
+}
+elseif (preg_match('#^/api/supplier/products/(\d+)$#', $uri, $matches) && $method === 'DELETE') {
+    require_once __DIR__ . '/routes/supplier.php';
+    removeSupplierProduct($matches[1]);
+}
+
+
+
+>>>>>>> Stashed changes
 else {
     http_response_code(404);
     echo json_encode([
