@@ -25,7 +25,7 @@ if ($uri === '/api/auth/login' && $method === 'POST') {
 elseif ($uri === '/api/auth/register' && $method === 'POST') {
     require_once __DIR__ . '/routes/auth.php';
     register();
-} 
+}
 elseif ($uri === '/api/auth/check-email' && $method === 'POST') {
     require_once __DIR__ . '/routes/auth.php';
     checkEmail();
@@ -44,7 +44,7 @@ elseif ($uri === '/api/auth/logout' && $method === 'POST') {
 elseif ($uri === '/api/projects/create' && $method === 'POST') {
     require_once __DIR__ . '/routes/projects.php';
     createProject();
-} //-create project
+}
 elseif ($uri === '/api/projects' && $method === 'GET') {
     require_once __DIR__ . '/routes/projects.php';
     getAllProjects();
@@ -71,42 +71,35 @@ elseif (preg_match('#^/api/tasks/(\d+)/toggle-finish$#', $uri, $matches) && $met
     require_once __DIR__ . '/routes/tasks.php';
     toggleTaskFinish($matches[1]);
 }
+elseif (preg_match('#^/api/tasks/(\d+)/daily-status$#', $uri, $matches) && $method === 'PUT') {
+    require_once __DIR__ . '/routes/tasks.php';
+    saveTaskDailyStatus($matches[1]);
+}
 elseif (preg_match('#^/api/tasks/(\d+)$#', $uri, $matches) && $method === 'DELETE') {
     require_once __DIR__ . '/routes/tasks.php';
     deleteTask($matches[1]);
 }
 
-
-
-
-else if ($uri === '/api/feedback/submit' && $method === 'POST') {
+// ── FEEDBACK (PUBLIC / GENERAL) ──────────────────────────────────────────────
+elseif ($uri === '/api/feedback/submit' && $method === 'POST') {
     require_once __DIR__ . '/routes/feedback.php';
     submitFeedback();
 }
-
-else if ($uri === '/api/stats/summary' && $method === 'GET') {
-    require_once __DIR__ . '/routes/stats.php';
-    getStatsSummary();
-}
-
-<<<<<<< Updated upstream
-// else if ($uri === '/api/projects/create' && $method === 'POST') {
-//     require_once __DIR__ . '/routes/projects.php';
-//     createProjectRoute();
-// }
-
-else if ($uri === '/api/feedback' && $method === 'GET') {
+elseif ($uri === '/api/feedback' && $method === 'GET') {
     require_once __DIR__ . '/routes/feedback.php';
     listFeedback();
 }
-
-else if ($uri === '/api/feedback/status' && $method === 'PUT') {
+elseif ($uri === '/api/feedback/status' && $method === 'PUT') {
     require_once __DIR__ . '/routes/feedback.php';
     updateFeedbackStatus();
 }
 
-else if (preg_match('#^/api/projects/(\d+)/comments$#', $uri, $matches) && $method === 'GET') {
-=======
+// ── STATS ────────────────────────────────────────────────────────────────────
+elseif ($uri === '/api/stats/summary' && $method === 'GET') {
+    require_once __DIR__ . '/routes/stats.php';
+    getStatsSummary();
+}
+
 // ── REPORTS ───────────────────────────────────────────────────────────────────
 elseif (preg_match('#^/api/reports/project/(\d+)$#', $uri, $matches) && $method === 'GET') {
     require_once __DIR__ . '/routes/reports.php';
@@ -123,19 +116,15 @@ elseif (preg_match('#^/api/reports/project/(\d+)/generate$#', $uri, $matches) &&
 
 // ── COMMENTS ─────────────────────────────────────────────────────────────────
 elseif (preg_match('#^/api/projects/(\d+)/comments$#', $uri, $matches) && $method === 'GET') {
->>>>>>> Stashed changes
     require_once __DIR__ . '/routes/comments.php';
     getProjectComments((int)$matches[1]);
 }
-
-else if (preg_match('#^/api/projects/(\d+)/comments$#', $uri, $matches) && $method === 'POST') {
+elseif (preg_match('#^/api/projects/(\d+)/comments$#', $uri, $matches) && $method === 'POST') {
     require_once __DIR__ . '/routes/comments.php';
     createProjectComment((int)$matches[1]);
 }
 
 
-<<<<<<< Updated upstream
-=======
 // ── ADMIN ────────────────────────────────────────────────────────────────────
 elseif ($uri === '/api/admin/stats' && $method === 'GET') {
     require_once __DIR__ . '/routes/admin.php';
@@ -294,7 +283,6 @@ elseif (preg_match('#^/api/supplier/products/(\d+)$#', $uri, $matches) && $metho
 
 
 
->>>>>>> Stashed changes
 else {
     http_response_code(404);
     echo json_encode([
