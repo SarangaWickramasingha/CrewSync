@@ -54,6 +54,11 @@ function getProviderProfile() {
     $controller->getProfile();
 }
 
+function getPublicProviderProfile($providerId) {
+    $controller = new ProviderController();
+    $controller->getPublicProfile($providerId);
+}
+
 function updateProviderPersonalInfo() {
     $controller = new ProviderController();
     $controller->updatePersonalInfo();

@@ -100,6 +100,32 @@ elseif ($uri === '/api/stats/summary' && $method === 'GET') {
     getStatsSummary();
 }
 
+// ── REPORTS ───────────────────────────────────────────────────────────────────
+elseif (preg_match('#^/api/reports/project/(\d+)$#', $uri, $matches) && $method === 'GET') {
+    require_once __DIR__ . '/routes/reports.php';
+    listProjectReports($matches[1]);
+}
+elseif (preg_match('#^/api/reports/task/(\d+)/generate$#', $uri, $matches) && $method === 'POST') {
+    require_once __DIR__ . '/routes/reports.php';
+    generateTaskReport($matches[1]);
+}
+elseif (preg_match('#^/api/reports/project/(\d+)/generate$#', $uri, $matches) && $method === 'POST') {
+    require_once __DIR__ . '/routes/reports.php';
+    generateProjectReport($matches[1]);
+}
+
+}
+elseif ($uri === '/api/feedback/status' && $method === 'PUT') {
+    require_once __DIR__ . '/routes/feedback.php';
+    updateFeedbackStatus();
+}
+
+// ── STATS ────────────────────────────────────────────────────────────────────
+elseif ($uri === '/api/stats/summary' && $method === 'GET') {
+    require_once __DIR__ . '/routes/stats.php';
+    getStatsSummary();
+}
+
 // ── COMMENTS ─────────────────────────────────────────────────────────────────
 elseif (preg_match('#^/api/projects/(\d+)/comments$#', $uri, $matches) && $method === 'GET') {
     require_once __DIR__ . '/routes/comments.php';
@@ -236,6 +262,30 @@ elseif (preg_match('#^/api/provider/skills/(\d+)$#', $uri, $matches) && $method 
     removeProviderSkill($matches[1]);
 }
 
+
+
+
+// ── SEARCH ────────────────────────────────────────────────────────────────────
+elseif ($uri === '/api/search/providers' && $method === 'GET') {
+    require_once __DIR__ . '/routes/search.php';
+    searchProviders();
+}
+elseif ($uri === '/api/search/materials' && $method === 'GET') {
+    require_once __DIR__ . '/routes/search.php';
+    searchMaterials();
+}
+
+// ── PUBLIC PROVIDER PROFILE ──────────────────────────────────────────────────
+elseif (preg_match('#^/api/providers/(\d+)$#', $uri, $matches) && $method === 'GET') {
+    require_once __DIR__ . '/routes/provider.php';
+    getPublicProviderProfile($matches[1]);
+}
+
+// ── SERVICE REQUESTS ─────────────────────────────────────────────────────────
+elseif ($uri === '/api/service-requests' && $method === 'POST') {
+    require_once __DIR__ . '/routes/service_requests.php';
+    createServiceRequest();
+}
 
 
 

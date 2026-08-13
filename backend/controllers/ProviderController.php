@@ -467,6 +467,92 @@ class ProviderController {
         echo json_encode(["success" => true, "reviews" => $reviews]);
     }
 
+    // ── GET PUBLIC PROVIDER PROFILE (guests can view) ──────────────────────────
+    public function getPublicProfile($providerId) {
+        $providerId = (int) $providerId;
+
+        $stmt = $this->db->prepare("
+            SELECT sp.provider_id, sp.bio, sp.experience_yr, sp.charge_per_day, sp.avg_rating,
+                   sp.is_available, sp.willing_outside_region,
+                   u.fname, u.lname, u.email, u.district
+            FROM service_providers sp
+            JOIN users u ON u.user_id = sp.user_id
+            WHERE sp.provider_id = ?
+        ");
+        $stmt->execute([$providerId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$row) {
+            http_response_code(404);
+            echo json_encode(["success" => false, "message" => "Service provider not found"]);
+            return;
+        }
+
+        $stmt = $this->db->prepare("
+            SELECT s.name FROM provider_skills ps
+            JOIN skills s ON s.skill_id = ps.skill_id
+            WHERE ps.provider_id = ?
+            ORDER BY ps.id ASC
+        ");
+        $stmt->execute([$providerId]);
+        $skills = array_column($stmt->fetchAll(PDO::FETCH_ASSOC), 'name');
+
+        $stmt = $this->db->prepare("
+            SELECT r.review_id, r.rating, r.comment, r.review_date, u.fname, u.lname
+            FROM reviews r
+            JOIN property_owners po ON po.owner_id = r.owner_id
+            JOIN users u ON u.user_id = po.user_id
+            WHERE r.provider_id = ?
+            ORDER BY r.review_date DESC
+        ");
+        $stmt->execute([$providerId]);
+        $reviewRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $reviews = [];
+        foreach ($reviewRows as $r) {
+            $stmt2 = $this->db->prepare("SELECT file_path FROM review_photos WHERE review_id = ?");
+            $stmt2->execute([$r['review_id']]);
+            $photoPaths = $stmt2->fetchAll(PDO::FETCH_ASSOC);
+
+            $reviews[] = [
+                "id"      => (int) $r['review_id'],
+                "author"  => trim($r['fname'] . ' ' . $r['lname']),
+                "date"    => date('F j, Y', strtotime($r['review_date'])),
+                "rating"  => (int) $r['rating'],
+                "comment" => $r['comment'],
+                "photos"  => array_map(fn($p) => "http://localhost/CrewSync-backend/backend/uploads/" . $p['file_path'], $photoPaths),
+            ];
+        }
+
+        $fname = $row['fname'];
+        $lname = $row['lname'];
+        $initials = strtoupper($fname[0] ?? '');
+        if (isset($lname[0]) && trim($lname) !== '') {
+            $initials .= strtoupper($lname[0]);
+        } elseif (isset($fname[1])) {
+            $initials .= strtoupper($fname[1]);
+        }
+
+        echo json_encode([
+            "success" => true,
+            "provider" => [
+                "provider_id"            => (int) $row['provider_id'],
+                "name"                   => trim($fname . ' ' . $lname),
+                "email"                  => $row['email'],
+                "bio"                    => $row['bio'],
+                "experience_yr"          => (int) $row['experience_yr'],
+                "charge_per_day"         => $row['charge_per_day'] !== null ? (float) $row['charge_per_day'] : null,
+                "avg_rating"             => $row['avg_rating'] !== null ? (float) $row['avg_rating'] : 0,
+                "is_available"           => (bool) $row['is_available'],
+                "willing_outside_region" => (bool) $row['willing_outside_region'],
+                "district"               => $row['district'],
+                "initials"               => $initials,
+                "skills"                 => $skills,
+                "reviews"                => $reviews,
+            ],
+        ]);
+    }
+
     // ── UPLOAD REVIEW PHOTOS ────────────────────────────────────────────────────
     public function uploadReviewPhotos($reviewId) {
         $user = requireRole('service_provider');
