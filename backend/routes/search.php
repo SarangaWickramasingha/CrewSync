@@ -5,3 +5,8 @@ function searchProviders() {
     $controller = new SearchController();
     $controller->searchProviders();
 }
+
+function searchMaterials() {
+    $controller = new SearchController();
+    $controller->searchMaterials();
+}

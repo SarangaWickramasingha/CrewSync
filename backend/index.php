@@ -258,6 +258,10 @@ elseif ($uri === '/api/search/providers' && $method === 'GET') {
     require_once __DIR__ . '/routes/search.php';
     searchProviders();
 }
+elseif ($uri === '/api/search/materials' && $method === 'GET') {
+    require_once __DIR__ . '/routes/search.php';
+    searchMaterials();
+}
 
 // ── PUBLIC PROVIDER PROFILE ──────────────────────────────────────────────────
 elseif (preg_match('#^/api/providers/(\d+)$#', $uri, $matches) && $method === 'GET') {
