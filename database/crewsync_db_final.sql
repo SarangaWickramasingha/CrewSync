@@ -253,6 +253,14 @@ CREATE TABLE reviews (
     CONSTRAINT fk_rev_provider FOREIGN KEY (provider_id)
         REFERENCES service_providers(provider_id) ON DELETE CASCADE
 );
+-- New table for review photos
+CREATE TABLE review_photos (
+    photo_id INT AUTO_INCREMENT PRIMARY KEY,
+    review_id INT NOT NULL,
+    file_path VARCHAR(255) NOT NULL,
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (review_id) REFERENCES reviews(review_id)
+);
 
 -- ============================================================
 -- 17. FEEDBACK (user sends to admin)

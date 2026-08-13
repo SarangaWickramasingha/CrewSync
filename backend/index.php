@@ -259,6 +259,12 @@ elseif ($uri === '/api/search/providers' && $method === 'GET') {
     searchProviders();
 }
 
+// ── PUBLIC PROVIDER PROFILE ──────────────────────────────────────────────────
+elseif (preg_match('#^/api/providers/(\d+)$#', $uri, $matches) && $method === 'GET') {
+    require_once __DIR__ . '/routes/provider.php';
+    getPublicProviderProfile($matches[1]);
+}
+
 // ── SERVICE REQUESTS ─────────────────────────────────────────────────────────
 elseif ($uri === '/api/service-requests' && $method === 'POST') {
     require_once __DIR__ . '/routes/service_requests.php';
