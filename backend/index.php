@@ -114,7 +114,7 @@ elseif (preg_match('#^/api/reports/project/(\d+)/generate$#', $uri, $matches) &&
     generateProjectReport($matches[1]);
 }
 
-}
+
 elseif ($uri === '/api/feedback/status' && $method === 'PUT') {
     require_once __DIR__ . '/routes/feedback.php';
     updateFeedbackStatus();

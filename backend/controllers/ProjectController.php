@@ -135,26 +135,6 @@ class ProjectController {
 
         $ownerId = $owner['owner_id'];
 
-        // Check if owner already has an active project
-        $stmt = $this->db->prepare("
-            SELECT project_id FROM projects 
-            WHERE owner_id = ? AND is_finished = 0
-            LIMIT 1
-        ");
-        $stmt->execute([$ownerId]);
-        $activeProject = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($activeProject) {
-            http_response_code(409);
-            echo json_encode([
-                "success" => false,
-                "message" => "You already have an active project. Please finish it before starting a new one.",
-                "active_project_id" => $activeProject['project_id']
-            ]);
-            return;
-        }
-
-
         // Insert project
         $stmt = $this->db->prepare("
             INSERT INTO projects 
