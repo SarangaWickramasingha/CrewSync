@@ -114,6 +114,18 @@ elseif (preg_match('#^/api/reports/project/(\d+)/generate$#', $uri, $matches) &&
     generateProjectReport($matches[1]);
 }
 
+}
+elseif ($uri === '/api/feedback/status' && $method === 'PUT') {
+    require_once __DIR__ . '/routes/feedback.php';
+    updateFeedbackStatus();
+}
+
+// ── STATS ────────────────────────────────────────────────────────────────────
+elseif ($uri === '/api/stats/summary' && $method === 'GET') {
+    require_once __DIR__ . '/routes/stats.php';
+    getStatsSummary();
+}
+
 // ── COMMENTS ─────────────────────────────────────────────────────────────────
 elseif (preg_match('#^/api/projects/(\d+)/comments$#', $uri, $matches) && $method === 'GET') {
     require_once __DIR__ . '/routes/comments.php';

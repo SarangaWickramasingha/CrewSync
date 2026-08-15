@@ -94,6 +94,7 @@ CREATE TABLE provider_skills (
     UNIQUE KEY uq_provider_skill (provider_id, skill_id)
 );
 
+ALTER TABLE provider_skills ADD COLUMN description VARCHAR(500) NULL AFTER experience_yr;
 -- ============================================================
 -- 8. HARDWARE STORE DETAILS
 -- ============================================================
@@ -187,6 +188,23 @@ CREATE TABLE tasks (
 
 
 -- ============================================================
+-- 12.5 TASK DAILY STATUS (per-day status on the timeline)
+-- ============================================================
+
+CREATE TABLE task_daily_status (
+    status_id INT AUTO_INCREMENT PRIMARY KEY,
+    task_id INT NOT NULL,
+    status_date DATE NOT NULL,
+    status ENUM('not_started', 'in_progress', 'done', 'blocked') NOT NULL DEFAULT 'not_started',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (task_id) REFERENCES tasks(task_id) ON DELETE CASCADE,
+
+    UNIQUE KEY unique_task_date (task_id, status_date)
+);
+
+
+-- ============================================================
 -- 13. TASK ASSIGNMENTS (provider assigned to task)
 -- ============================================================
 
@@ -261,6 +279,18 @@ CREATE TABLE review_photos (
     uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (review_id) REFERENCES reviews(review_id)
 );
+
+-- New table for review photos
+CREATE TABLE review_photos (
+    photo_id INT AUTO_INCREMENT PRIMARY KEY,
+    review_id INT NOT NULL,
+    file_path VARCHAR(255) NOT NULL,
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (review_id) REFERENCES reviews(review_id)
+);
+
+-- Reviews table needs a reply column (doesn't exist yet)
+ALTER TABLE reviews ADD COLUMN provider_reply TEXT NULL;
 
 -- ============================================================
 -- 17. FEEDBACK (user sends to admin)
@@ -356,3 +386,7 @@ INSERT INTO materials (material_id, name, unit) VALUES
 (7, 'Bricks', 'unit'),
 (8, 'Glass', 'unit'),
 (9, 'Other', 'unit');
+
+ALTER TABLE users
+ADD COLUMN status ENUM('active','suspended') NOT NULL DEFAULT 'active';
+
