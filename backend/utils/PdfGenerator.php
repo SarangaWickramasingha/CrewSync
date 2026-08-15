@@ -160,6 +160,9 @@ class PdfGenerator extends FPDF {
         $this->sectionTitle('Project Summary');
         $this->keyValueTable([
             'Project Name'  => $project['project_name'] ?? '—',
+            'Start Date'    => $project['start_date'] ?? '—',
+            'End Date'      => $project['end_date'] ?? '—',
+            'Duration'      => ($facts['duration_days'] !== null ? $facts['duration_days'] . ' days' : '—'),
             'Tasks'         => count($facts['tasks']) . ' task(s)',
             'Total Worked'  => $facts['total_worked'] . ' days',
         ]);
