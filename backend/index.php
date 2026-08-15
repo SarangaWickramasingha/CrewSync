@@ -63,6 +63,10 @@ elseif ($uri === '/api/tasks' && $method === 'POST') {
     require_once __DIR__ . '/routes/tasks.php';
     createTask();
 }
+elseif ($uri === '/api/tasks/unassigned' && $method === 'GET') {
+    require_once __DIR__ . '/routes/tasks.php';
+    getUnassignedTasks();
+}
 elseif (preg_match('#^/api/tasks/(\d+)$#', $uri, $matches) && $method === 'PUT') {
     require_once __DIR__ . '/routes/tasks.php';
     updateTask($matches[1]);

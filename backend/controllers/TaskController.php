@@ -177,6 +177,42 @@ class TaskController {
         echo json_encode(["success" => true, "saved" => $saved]);
     }
 
+    // ── GET UNASSIGNED TASKS (across all the owner's projects) ───────────────
+    // Returns every task that has no provider assigned in task_assignments.
+    public function getUnassigned() {
+        $user = requireRole('property_owner');
+
+        $stmt = $this->db->prepare("SELECT owner_id FROM property_owners WHERE user_id = ?");
+        $stmt->execute([$user['user_id']]);
+        $owner = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$owner) {
+            http_response_code(403);
+            echo json_encode(["success" => false, "message" => "Property owner profile not found"]);
+            return;
+        }
+
+        $stmt = $this->db->prepare("
+            SELECT t.task_id, t.task_name, t.is_finished,
+                   p.project_id, p.project_name
+            FROM tasks t
+            JOIN projects p ON p.project_id = t.project_id
+            WHERE p.owner_id = ?
+              AND t.is_finished = 0
+              AND NOT EXISTS (
+                  SELECT 1 FROM task_assignments ta WHERE ta.task_id = t.task_id
+              )
+            ORDER BY p.project_id ASC, t.task_id ASC
+        ");
+        $stmt->execute([$owner['owner_id']]);
+        $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        echo json_encode([
+            "success" => true,
+            "tasks"   => $tasks,
+        ]);
+    }
+
     // ── DELETE TASK ────────────────────────────────────────────────────────────
     public function delete($taskId) {
         $user = requireRole('property_owner');
