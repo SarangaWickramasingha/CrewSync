@@ -206,14 +206,21 @@ class Report {
         $cost   = (float) ($project['p_cost'] ?? 0);
         if ($cost <= 0) $cost = $totalCost;
 
+        $totalDays = null;
+        if ($project['start_date'] && $project['end_date']) {
+            $totalDays = (int) ((strtotime($project['end_date']) - strtotime($project['start_date'])) / 86400) + 1;
+            if ($totalDays < 0) $totalDays = 0;
+        }
+
         return [
-            'project'      => $project,
-            'tasks'        => $rows,
-            'budget'       => $budget,
-            'cost'         => $cost,
-            'total_cost'   => $totalCost,
-            'total_worked' => $totalWorked,
-            'diff'         => $cost - $budget,
+            'project'       => $project,
+            'tasks'         => $rows,
+            'budget'        => $budget,
+            'cost'          => $cost,
+            'total_cost'    => $totalCost,
+            'total_worked'  => $totalWorked,
+            'duration_days' => $totalDays,
+            'diff'          => $cost - $budget,
         ];
     }
 }
