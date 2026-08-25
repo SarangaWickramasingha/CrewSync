@@ -1,3 +1,6 @@
+
+USE crewsync;
+
 DELETE FROM reports;
 DELETE FROM notifications;
 DELETE FROM feedback;
@@ -35,7 +38,6 @@ ALTER TABLE property_owners AUTO_INCREMENT = 1;
 ALTER TABLE users AUTO_INCREMENT = 1;
 
 
-USE crewsync;
 
 -- ============================
 -- 1. USERS (1-3 owners, 4-6 providers, 7-9 suppliers)
