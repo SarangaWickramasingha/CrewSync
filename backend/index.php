@@ -141,37 +141,6 @@ elseif (preg_match('#^/api/projects/(\d+)/comments$#', $uri, $matches) && $metho
 }
 
 
-// ── MATERIAL SUPPLIER ─────────────────────────────────────────────────────────
-elseif ($uri === '/api/supplier/products' && $method === 'GET') {
-    require_once __DIR__ . '/routes/supplier.php';
-    supplierGetMyProducts();
-}
-elseif ($uri === '/api/supplier/products' && $method === 'POST') {
-    require_once __DIR__ . '/routes/supplier.php';
-    supplierSaveProduct();
-}
-elseif (preg_match('#^/api/supplier/products/(\d+)$#', $uri, $matches) && $method === 'DELETE') {
-    require_once __DIR__ . '/routes/supplier.php';
-    supplierDeleteProduct($matches[1]);
-}
-elseif ($uri === '/api/supplier/orders' && $method === 'GET') {
-    require_once __DIR__ . '/routes/supplier.php';
-    supplierGetMyOrders();
-}
-elseif (preg_match('#^/api/supplier/orders/(\d+)/status$#', $uri, $matches) && $method === 'PUT') {
-    require_once __DIR__ . '/routes/supplier.php';
-    supplierUpdateOrderStatus($matches[1]);
-}
-elseif ($uri === '/api/supplier/profile' && $method === 'GET') {
-    require_once __DIR__ . '/routes/supplier.php';
-    supplierGetMyProfile();
-}
-elseif ($uri === '/api/supplier/profile' && $method === 'PUT') {
-    require_once __DIR__ . '/routes/supplier.php';
-    supplierUpdateMyProfile();
-}
-
-
 // ── SERVICE PROVIDER ──────────────────────────────────────────────────────────
 elseif ($uri === '/api/provider/reviews/all' && $method === 'GET') {
     require_once __DIR__ . '/routes/provider.php';
@@ -359,6 +328,22 @@ elseif ($uri === '/api/supplier/products' && $method === 'POST') {
 elseif (preg_match('#^/api/supplier/products/(\d+)$#', $uri, $matches) && $method === 'DELETE') {
     require_once __DIR__ . '/routes/supplier.php';
     removeSupplierProduct($matches[1]);
+}
+elseif ($uri === '/api/supplier/orders' && $method === 'GET') {
+    require_once __DIR__ . '/routes/supplier.php';
+    getSupplierOrders();
+}
+elseif (preg_match('#^/api/supplier/orders/(\d+)/status$#', $uri, $matches) && $method === 'PUT') {
+    require_once __DIR__ . '/routes/supplier.php';
+    updateSupplierOrderStatus($matches[1]);
+}
+elseif ($uri === '/api/supplier/profile' && $method === 'GET') {
+    require_once __DIR__ . '/routes/supplier.php';
+    getSupplierProfile();
+}
+elseif ($uri === '/api/supplier/profile' && $method === 'PUT') {
+    require_once __DIR__ . '/routes/supplier.php';
+    updateSupplierProfile();
 }
 
 

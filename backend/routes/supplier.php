@@ -15,3 +15,23 @@ function removeSupplierProduct($id) {
     $controller = new SupplierController();
     $controller->removeProduct($id);
 }
+
+function getSupplierOrders() {
+    $controller = new SupplierController();
+    $controller->getOrders();
+}
+
+function updateSupplierOrderStatus($orderId) {
+    $controller = new SupplierController();
+    $controller->updateOrderStatus($orderId);
+}
+
+function getSupplierProfile() {
+    $controller = new SupplierController();
+    $controller->getProfile();
+}
+
+function updateSupplierProfile() {
+    $controller = new SupplierController();
+    $controller->updateProfile();
+}
