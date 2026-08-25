@@ -27,7 +27,7 @@ public function login() {
     if (!$user) {
         echo json_encode([
             "success" => false,
-            "message" => "User not found"
+            "message" => "Invalid email or password"
         ]);
         return;
     }
@@ -35,7 +35,7 @@ public function login() {
     if (!password_verify($password, $user['password_hash'])) {
         echo json_encode([
             "success" => false,
-            "message" => "Invalid password"
+            "message" => "Invalid email or password"
         ]);
         return;
     }
