@@ -73,3 +73,18 @@ function removeProviderSkill($skillId) {
     $controller = new ProviderController();
     $controller->removeSkill($skillId);
 }
+function providerGetAllReviews() {
+    getProviderAllReviews();
+}
+function providerUploadReviewPhotos($reviewId) {
+    uploadProviderReviewPhotos($reviewId);
+}
+function providerDeleteReviewPhoto($photoId) {
+    deleteProviderReviewPhoto($photoId);
+}
+function providerGetJobRequests() {
+    getProviderJobRequests();
+}
+function providerRespondToJobRequest($requestId) {
+    respondToProviderJobRequest($requestId);
+}

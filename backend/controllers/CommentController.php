@@ -15,6 +15,7 @@ class CommentController {
     // For now: property owner who owns the project. Later you can OR-in
     // service providers assigned to the project.
     private function canAccessProject($projectId, $userId) {
+        // 1. Property Owner of this project
         $stmt = $this->db->prepare("
             SELECT p.project_id
             FROM projects p
@@ -22,7 +23,25 @@ class CommentController {
             WHERE po.user_id = ? AND p.project_id = ?
         ");
         $stmt->execute([$userId, $projectId]);
-        return (bool) $stmt->fetch();
+        if ($stmt->fetch()) return true;
+
+        // 2. Service Provider assigned to this project
+        $stmt = $this->db->prepare("
+            SELECT t.task_id
+            FROM task_assignments ta
+            JOIN tasks t ON t.task_id = ta.task_id
+            JOIN service_providers sp ON sp.provider_id = ta.provider_id
+            WHERE sp.user_id = ? AND t.project_id = ?
+        ");
+        $stmt->execute([$userId, $projectId]);
+        if ($stmt->fetch()) return true;
+
+        // 3. Admin or any participant
+        $stmt = $this->db->prepare("SELECT user_id FROM users WHERE user_id = ? AND role = 'admin'");
+        $stmt->execute([$userId]);
+        if ($stmt->fetch()) return true;
+
+        return false;
     }
 
     // ── GET ALL COMMENTS FOR A PROJECT ────────────────────────────────────────
