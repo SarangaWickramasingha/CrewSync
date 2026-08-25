@@ -329,6 +329,22 @@ elseif (preg_match('#^/api/supplier/products/(\d+)$#', $uri, $matches) && $metho
     require_once __DIR__ . '/routes/supplier.php';
     removeSupplierProduct($matches[1]);
 }
+elseif ($uri === '/api/supplier/orders' && $method === 'GET') {
+    require_once __DIR__ . '/routes/supplier.php';
+    getSupplierOrders();
+}
+elseif (preg_match('#^/api/supplier/orders/(\d+)/status$#', $uri, $matches) && $method === 'PUT') {
+    require_once __DIR__ . '/routes/supplier.php';
+    updateSupplierOrderStatus($matches[1]);
+}
+elseif ($uri === '/api/supplier/profile' && $method === 'GET') {
+    require_once __DIR__ . '/routes/supplier.php';
+    getSupplierProfile();
+}
+elseif ($uri === '/api/supplier/profile' && $method === 'PUT') {
+    require_once __DIR__ . '/routes/supplier.php';
+    updateSupplierProfile();
+}
 
 
 
