@@ -26,8 +26,19 @@ error_log("FEEDBACK DEBUG user: " . json_encode($user));
 
         $name        = trim($data['name'] ?? '');
         $email       = trim($data['email'] ?? '');
-        $messageType = trim($data['message_type'] ?? 'General Inquiry');
+        $messageType = trim($data['message_type'] ?? $data['subject'] ?? 'Report Review');
         $message     = trim($data['message'] ?? '');
+
+        // If user is authenticated and name/email not provided, load from user record
+        if ($user && (!$name || !$email)) {
+            $stmt = $this->db->prepare("SELECT fname, lname, email FROM users WHERE user_id = ?");
+            $stmt->execute([$user['user_id']]);
+            $u = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($u) {
+                if (!$name) $name = trim($u['fname'] . ' ' . $u['lname']);
+                if (!$email) $email = $u['email'];
+            }
+        }
 
         if (!$name || !$email || !$message) {
             echo json_encode([
