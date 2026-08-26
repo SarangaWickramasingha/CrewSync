@@ -13,7 +13,7 @@ class PdfGenerator extends FPDF {
         parent::__construct('P', 'mm', 'A4');
     }
 
-    // ── DOCUMENT HEADER / FOOTER ──────────────────────────────────────────────
+    // ── DOCUMENT HEADER / FOOTER ───────────────────────────────────────────────
     public function Header() {
         if (!$this->title) return;
         $this->SetFont('Helvetica', 'B', 10);
@@ -69,23 +69,26 @@ class PdfGenerator extends FPDF {
         }
     }
 
-    private function headerRow($cols) {
+    private function headerRow($headers, $widths, $aligns = []) {
         $this->SetFillColor(247, 246, 242);
         $this->SetFont('Helvetica', 'B', 9);
         $this->SetTextColor(26, 29, 35);
         $this->SetDrawColor(222, 224, 230);
-        foreach ($cols as $w => $label) {
-            $this->Cell($w, 7, $label, 'B', 0, 'L', true);
+        foreach ($headers as $i => $label) {
+            $w = $widths[$i] ?? 40;
+            $align = $aligns[$i] ?? 'L';
+            $this->Cell($w, 7, $label, 'B', 0, $align, true);
         }
         $this->Ln();
     }
 
-    private function bodyRow($cols, $aligns = []) {
+    private function bodyRow($cells, $widths, $aligns = []) {
         $this->SetFont('Helvetica', '', 9);
         $this->SetTextColor(26, 29, 35);
-        foreach ($cols as $i => $text) {
+        foreach ($cells as $i => $text) {
+            $w = $widths[$i] ?? 40;
             $align = $aligns[$i] ?? 'L';
-            $this->Cell(array_keys($cols)[$i], 7, (string) $text, 'B', 0, $align);
+            $this->Cell($w, 7, (string) $text, 'B', 0, $align);
         }
         $this->Ln();
     }
@@ -100,7 +103,7 @@ class PdfGenerator extends FPDF {
         return 'LKR ' . number_format((float) $amount, 2);
     }
 
-    // ── TASK REPORT ───────────────────────────────────────────────────────────
+    // ── TASK REPORT ────────────────────────────────────────────────────────────
     public function taskReport($facts) {
         $task   = $facts['task'];
         $title  = 'Task Report';
@@ -119,9 +122,9 @@ class PdfGenerator extends FPDF {
 
         $this->sectionTitle('Task Details');
         $this->keyValueTable([
-            'Task Name'   => $task['task_name'] ?? '—',
-            'Start Date'  => $task['start_date'] ?? '—',
-            'End Date'    => $task['end_date'] ?? '—',
+            'Task Name'   => $task['task_name'] ?? '-',
+            'Start Date'  => $task['start_date'] ?? '-',
+            'End Date'    => $task['end_date'] ?? '-',
             'Worked Days' => $facts['worked_days'] . ' days',
             'Done By'     => $facts['providers'] ? implode(', ', $facts['providers']) : 'No Service providers were allocated',
         ]);
@@ -129,7 +132,7 @@ class PdfGenerator extends FPDF {
         $this->sectionTitle('Budget & Cost');
         $diff = $facts['diff'];
         $this->keyValueTable([
-            'Budget'    => $this->money($facts['budget']),
+            'Budget'      => $this->money($facts['budget']),
             'Actual Cost' => $this->money($facts['cost']),
             'Difference'  => [
                 'text'  => $this->money(abs($diff)) . ($diff > 0.005 ? ' exceeded' : ($diff < -0.005 ? ' saved' : ' on budget')),
@@ -140,7 +143,7 @@ class PdfGenerator extends FPDF {
         return $this->outputFile('task_' . $task['task_id'] . '_report');
     }
 
-    // ── PROJECT REPORT ────────────────────────────────────────────────────────
+    // ── PROJECT REPORT ─────────────────────────────────────────────────────────
     public function projectReport($facts) {
         $project = $facts['project'];
         $title   = 'Full Project Completion Report';
@@ -159,10 +162,10 @@ class PdfGenerator extends FPDF {
 
         $this->sectionTitle('Project Summary');
         $this->keyValueTable([
-            'Project Name'  => $project['project_name'] ?? '—',
-            'Start Date'    => $project['start_date'] ?? '—',
-            'End Date'      => $project['end_date'] ?? '—',
-            'Duration'      => ($facts['duration_days'] !== null ? $facts['duration_days'] . ' days' : '—'),
+            'Project Name'  => $project['project_name'] ?? '-',
+            'Start Date'    => $project['start_date'] ?? '-',
+            'End Date'      => $project['end_date'] ?? '-',
+            'Duration'      => ($facts['duration_days'] !== null ? $facts['duration_days'] . ' days' : '-'),
             'Tasks'         => count($facts['tasks']) . ' task(s)',
             'Total Worked'  => $facts['total_worked'] . ' days',
         ]);
@@ -184,16 +187,19 @@ class PdfGenerator extends FPDF {
             $this->SetTextColor(138, 143, 168);
             $this->Cell(0, 6, 'No tasks found for this project.', 0, 1, 'L');
         } else {
-            $this->headerRow([62 => 'Task', 38 => 'Worked', 50 => 'Budget', 50 => 'Cost']);
+            $widths = [65, 35, 45, 45];
+            $aligns = ['L', 'C', 'R', 'R'];
+            $this->headerRow(['Task', 'Worked', 'Budget', 'Cost'], $widths, $aligns);
             foreach ($facts['tasks'] as $d) {
                 $this->bodyRow(
                     [
-                        $d['task']['task_name'] ?? '—',
+                        $d['task']['task_name'] ?? '-',
                         ($d['worked_days']) . ' day(s)',
                         $this->money($d['budget']),
                         $this->money($d['cost']),
                     ],
-                    ['L', 'C', 'R', 'R']
+                    $widths,
+                    $aligns
                 );
             }
         }
@@ -201,7 +207,7 @@ class PdfGenerator extends FPDF {
         return $this->outputFile('project_' . $project['project_id'] . '_report');
     }
 
-    // ── SAVE & RETURN URL ─────────────────────────────────────────────────────
+    // ── SAVE & RETURN URL ──────────────────────────────────────────────────────
     private function outputFile($prefix) {
         $filename = $prefix . '_' . date('Ymd_His') . '.pdf';
         $path     = self::REPORTS_DIR . $filename;
