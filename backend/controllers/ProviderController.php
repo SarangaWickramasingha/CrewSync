@@ -12,7 +12,13 @@ class ProviderController {
 
 
     // ── TOGGLE AVAILABILITY STATUS ────────────────────────────────────────────
-    public function toggleAvailability() {
+    
+    private function getUploadsBaseUrl() {
+        $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost:8080';
+        return "{$scheme}://{$host}/CrewSync-backend/backend/uploads/";
+    }
+public function toggleAvailability() {
         $user = requireRole('service_provider');
 
         $stmt = $this->db->prepare("
@@ -196,7 +202,7 @@ class ProviderController {
         }
 
         $stmt = $this->db->prepare("
-            SELECT r.rating, r.comment, r.review_date, u.fname, u.lname
+            SELECT r.review_id, r.rating, r.comment, r.review_date, u.fname, u.lname
             FROM reviews r
             JOIN property_owners po ON po.owner_id = r.owner_id
             JOIN users u ON u.user_id = po.user_id
@@ -476,7 +482,7 @@ class ProviderController {
                 "reply"    => $r['provider_reply'],
                 "photos"   => array_map(fn($p) => [
                     "photo_id" => $p['photo_id'],
-                    "url"      => "http://localhost/CrewSync-backend/backend/uploads/" . $p['file_path'],
+                    "url"      => $this->getUploadsBaseUrl() . $p['file_path'],
                 ], $photos),
             ];
         }
@@ -537,7 +543,7 @@ class ProviderController {
                 "date"    => date('F j, Y', strtotime($r['review_date'])),
                 "rating"  => (int) $r['rating'],
                 "comment" => $r['comment'],
-                "photos"  => array_map(fn($p) => "http://localhost/CrewSync-backend/backend/uploads/" . $p['file_path'], $photoPaths),
+                "photos"  => array_map(fn($p) => $this->getUploadsBaseUrl() . $p['file_path'], $photoPaths),
             ];
         }
 
@@ -624,7 +630,7 @@ class ProviderController {
                 $stmt->execute([$reviewId, $relativePath]);
                 $uploaded[] = [
                     "photo_id" => $this->db->lastInsertId(),
-                    "url"      => "http://localhost/CrewSync-backend/backend/uploads/" . $relativePath,
+                    "url"      => $this->getUploadsBaseUrl() . $relativePath,
                 ];
             }
         }
