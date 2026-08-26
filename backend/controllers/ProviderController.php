@@ -109,12 +109,23 @@ class ProviderController {
         $stmt->execute([$providerId]);
         $jobsCompleted = $stmt->fetch(PDO::FETCH_ASSOC);
 
+        // Pending job requests (non-expired)
+        $stmt = $this->db->prepare("
+            SELECT COUNT(*) AS pending_requests
+            FROM service_requests
+            WHERE provider_id = ? AND request_status = 'pending'
+              AND (expires_at IS NULL OR expires_at >= NOW())
+        ");
+        $stmt->execute([$providerId]);
+        $pendingRequests = $stmt->fetch(PDO::FETCH_ASSOC);
+
         echo json_encode([
-            "success"        => true,
-            "total_reviews"  => (int) $reviewStats['total_reviews'],
-            "avg_rating"     => $reviewStats['avg_rating'] !== null ? round((float) $reviewStats['avg_rating'], 1) : 0,
-            "active_projects"=> (int) $activeProjects['active_projects'],
-            "jobs_completed" => (int) $jobsCompleted['jobs_completed'],
+            "success"          => true,
+            "total_reviews"    => (int) $reviewStats['total_reviews'],
+            "avg_rating"       => $reviewStats['avg_rating'] !== null ? round((float) $reviewStats['avg_rating'], 1) : 0,
+            "active_projects"  => (int) $activeProjects['active_projects'],
+            "jobs_completed"   => (int) $jobsCompleted['jobs_completed'],
+            "pending_requests" => (int) $pendingRequests['pending_requests'],
         ]);
     }
 
@@ -208,65 +219,71 @@ class ProviderController {
     }
     // ── GET JOB REQUESTS ───────────────────────────────────────────────────────
     public function getJobRequests() {
-        $user = requireRole('service_provider');
+        try {
+            $user = requireRole('service_provider');
 
-        $stmt = $this->db->prepare("SELECT provider_id FROM service_providers WHERE user_id = ?");
-        $stmt->execute([$user['user_id']]);
-        $provider = $stmt->fetch(PDO::FETCH_ASSOC);
+            $stmt = $this->db->prepare("SELECT provider_id FROM service_providers WHERE user_id = ?");
+            $stmt->execute([$user['user_id']]);
+            $provider = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if (!$provider) {
-            http_response_code(404);
-            echo json_encode(["success" => false, "message" => "Service provider profile not found"]);
-            return;
-        }
-
-        $providerId = $provider['provider_id'];
-
-        // Auto-expire anything past its deadline
-        $stmt = $this->db->prepare("
-            UPDATE service_requests
-            SET request_status = 'expired'
-            WHERE provider_id = ? AND request_status = 'pending' AND expires_at IS NOT NULL AND expires_at < NOW()
-        ");
-        $stmt->execute([$providerId]);
-
-        // Fetch active (non-expired) requests
-        $stmt = $this->db->prepare("
-            SELECT sr.request_id, sr.request_status, sr.request_date, sr.expires_at,
-                   u.fname, u.lname,
-                   t.task_name, t.start_date, t.end_date,
-                   p.district
-            FROM service_requests sr
-            JOIN property_owners po ON po.owner_id = sr.owner_id
-            JOIN users u ON u.user_id = po.user_id
-            LEFT JOIN tasks t ON t.task_id = sr.task_id
-            LEFT JOIN projects p ON p.project_id = t.project_id
-            WHERE sr.provider_id = ? AND sr.request_status != 'expired'
-            ORDER BY sr.request_date DESC
-        ");
-        $stmt->execute([$providerId]);
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        $statusMap = ['pending' => 'New', 'accepted' => 'Accepted', 'rejected' => 'Declined'];
-
-        $jobs = array_map(function ($r) use ($statusMap) {
-            $duration = null;
-            if ($r['start_date'] && $r['end_date']) {
-                $days = (strtotime($r['end_date']) - strtotime($r['start_date'])) / 86400;
-                $duration = $days >= 7 ? round($days / 7) . ' week' . (round($days / 7) != 1 ? 's' : '') : $days . ' day' . ($days != 1 ? 's' : '');
+            if (!$provider) {
+                http_response_code(404);
+                echo json_encode(["success" => false, "message" => "Service provider profile not found"]);
+                return;
             }
-            return [
-                "id"       => $r['request_id'],
-                "title"    => $r['task_name'] ?? 'General Service Request',
-                "client"   => trim($r['fname'] . ' ' . $r['lname']),
-                "location" => $r['district'] ?? 'Not specified',
-                "duration" => $duration ?? 'N/A',
-                "start"    => $r['start_date'] ?? 'N/A',
-                "status"   => $statusMap[$r['request_status']] ?? 'New',
-            ];
-        }, $rows);
 
-        echo json_encode(["success" => true, "jobs" => $jobs]);
+            $providerId = $provider['provider_id'];
+
+            // Auto-expire anything past its deadline
+            $stmt = $this->db->prepare("
+                UPDATE service_requests
+                SET request_status = 'expired'
+                WHERE provider_id = ? AND request_status = 'pending' AND expires_at IS NOT NULL AND expires_at < NOW()
+            ");
+            $stmt->execute([$providerId]);
+
+            // Fetch active (non-expired) requests
+            $stmt = $this->db->prepare("
+                SELECT sr.request_id, sr.request_status, sr.request_date, sr.expires_at,
+                       u.fname, u.lname,
+                       t.task_name, t.start_date, t.end_date,
+                       p.district
+                FROM service_requests sr
+                JOIN property_owners po ON po.owner_id = sr.owner_id
+                JOIN users u ON u.user_id = po.user_id
+                LEFT JOIN tasks t ON t.task_id = sr.task_id
+                LEFT JOIN projects p ON p.project_id = t.project_id
+                WHERE sr.provider_id = ? AND sr.request_status != 'expired'
+                ORDER BY sr.request_date DESC
+            ");
+            $stmt->execute([$providerId]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $statusMap = ['pending' => 'New', 'accepted' => 'Accepted', 'rejected' => 'Declined'];
+
+            $jobs = array_map(function ($r) use ($statusMap) {
+                $duration = null;
+                if ($r['start_date'] && $r['end_date']) {
+                    $days = (strtotime($r['end_date']) - strtotime($r['start_date'])) / 86400;
+                    $duration = $days >= 7 ? round($days / 7) . ' week' . (round($days / 7) != 1 ? 's' : '') : $days . ' day' . ($days != 1 ? 's' : '');
+                }
+                return [
+                    "id"       => $r['request_id'],
+                    "title"    => $r['task_name'] ?? 'General Service Request',
+                    "client"   => trim($r['fname'] . ' ' . $r['lname']),
+                    "location" => $r['district'] ?? 'Not specified',
+                    "duration" => $duration ?? 'N/A',
+                    "start"    => $r['start_date'] ?? 'N/A',
+                    "status"   => $statusMap[$r['request_status']] ?? 'New',
+                ];
+            }, $rows);
+
+            echo json_encode(["success" => true, "jobs" => $jobs]);
+        } catch (PDOException $e) {
+            error_log("getJobRequests error: " . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(["success" => false, "message" => "Failed to fetch job requests", "error" => $e->getMessage()]);
+        }
     }
 
     // ── RESPOND TO JOB REQUEST (accept / decline / undo) ──────────────────────

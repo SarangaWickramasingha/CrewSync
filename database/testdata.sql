@@ -144,9 +144,9 @@ INSERT INTO task_assignments (task_id, provider_id) VALUES
 -- 11. SERVICE REQUESTS
 -- ============================
 INSERT INTO service_requests (owner_id, provider_id, task_id, expires_at, request_status) VALUES
-(1, 1, 1,    '2026-07-12 23:59:59', 'accepted'),
-(2, 2, 3,    '2026-07-11 23:59:59', 'pending'),
-(3, 3, NULL, '2026-07-01 23:59:59', 'expired');
+(1, 1, 1,    DATE_ADD(NOW(), INTERVAL 3 DAY), 'pending'),
+(2, 2, 3,    DATE_ADD(NOW(), INTERVAL 3 DAY), 'pending'),
+(3, 3, NULL, DATE_ADD(NOW(), INTERVAL 3 DAY), 'pending');
 
 -- ============================
 -- 12. MATERIAL ORDERS (supplier_material_id = ids from step 7, i.e. 1-8)

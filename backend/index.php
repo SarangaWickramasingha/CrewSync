@@ -84,7 +84,7 @@ elseif (preg_match('#^/api/tasks/(\d+)$#', $uri, $matches) && $method === 'DELET
     deleteTask($matches[1]);
 }
 
-// ── FEEDBACK (PUBLIC / GENERAL) ──────────────────────────────────────────────
+// ── FEEDBACK ─────────────────────────────────────────────────────────────────
 elseif ($uri === '/api/feedback/submit' && $method === 'POST') {
     require_once __DIR__ . '/routes/feedback.php';
     submitFeedback();
@@ -118,18 +118,6 @@ elseif (preg_match('#^/api/reports/project/(\d+)/generate$#', $uri, $matches) &&
     generateProjectReport($matches[1]);
 }
 
-
-elseif ($uri === '/api/feedback/status' && $method === 'PUT') {
-    require_once __DIR__ . '/routes/feedback.php';
-    updateFeedbackStatus();
-}
-
-// ── STATS ────────────────────────────────────────────────────────────────────
-elseif ($uri === '/api/stats/summary' && $method === 'GET') {
-    require_once __DIR__ . '/routes/stats.php';
-    getStatsSummary();
-}
-
 // ── COMMENTS ─────────────────────────────────────────────────────────────────
 elseif (preg_match('#^/api/projects/(\d+)/comments$#', $uri, $matches) && $method === 'GET') {
     require_once __DIR__ . '/routes/comments.php';
@@ -140,29 +128,11 @@ elseif (preg_match('#^/api/projects/(\d+)/comments$#', $uri, $matches) && $metho
     createProjectComment((int)$matches[1]);
 }
 
-
-// ── SERVICE PROVIDER ──────────────────────────────────────────────────────────
-elseif ($uri === '/api/provider/reviews/all' && $method === 'GET') {
-    require_once __DIR__ . '/routes/provider.php';
-    providerGetAllReviews();
+// ── SERVICE REQUESTS ─────────────────────────────────────────────────────────
+elseif ($uri === '/api/service-requests' && $method === 'POST') {
+    require_once __DIR__ . '/routes/service_requests.php';
+    createServiceRequest();
 }
-elseif (preg_match('#^/api/reviews/(\d+)/photos$#', $uri, $matches) && $method === 'POST') {
-    require_once __DIR__ . '/routes/provider.php';
-    providerUploadReviewPhotos($matches[1]);
-}
-elseif (preg_match('#^/api/review-photos/(\d+)$#', $uri, $matches) && $method === 'DELETE') {
-    require_once __DIR__ . '/routes/provider.php';
-    providerDeleteReviewPhoto($matches[1]);
-}
-elseif ($uri === '/api/provider/job-requests' && $method === 'GET') {
-    require_once __DIR__ . '/routes/provider.php';
-    providerGetJobRequests();
-}
-elseif (preg_match('#^/api/provider/job-requests/(\d+)/respond$#', $uri, $matches) && $method === 'PUT') {
-    require_once __DIR__ . '/routes/provider.php';
-    providerRespondToJobRequest($matches[1]);
-}
-
 
 // ── ADMIN ────────────────────────────────────────────────────────────────────
 elseif ($uri === '/api/admin/stats' && $method === 'GET') {
@@ -290,8 +260,6 @@ elseif (preg_match('#^/api/provider/skills/(\d+)$#', $uri, $matches) && $method 
 }
 
 
-
-
 // ── SEARCH ────────────────────────────────────────────────────────────────────
 elseif ($uri === '/api/search/providers' && $method === 'GET') {
     require_once __DIR__ . '/routes/search.php';
@@ -307,14 +275,6 @@ elseif (preg_match('#^/api/providers/(\d+)$#', $uri, $matches) && $method === 'G
     require_once __DIR__ . '/routes/provider.php';
     getPublicProviderProfile($matches[1]);
 }
-
-// ── SERVICE REQUESTS ─────────────────────────────────────────────────────────
-elseif ($uri === '/api/service-requests' && $method === 'POST') {
-    require_once __DIR__ . '/routes/service_requests.php';
-    createServiceRequest();
-}
-
-
 
 // ── MATERIAL SUPPLIER ─────────────────────────────────────────────────────────
 elseif ($uri === '/api/supplier/products' && $method === 'GET') {
