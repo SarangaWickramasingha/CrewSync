@@ -68,71 +68,77 @@ public function toggleAvailability() {
 
     // ── GET DASHBOARD STATS ───────────────────────────────────────────────────
     public function getDashboardStats() {
-        $user = requireRole('service_provider');
+        try {
+            $user = requireRole('service_provider');
 
-        // Get provider_id from service_providers using user_id
-        $stmt = $this->db->prepare("
-            SELECT provider_id FROM service_providers WHERE user_id = ?
-        ");
-        $stmt->execute([$user['user_id']]);
-        $provider = $stmt->fetch(PDO::FETCH_ASSOC);
+            // Get provider_id from service_providers using user_id
+            $stmt = $this->db->prepare("
+                SELECT provider_id FROM service_providers WHERE user_id = ?
+            ");
+            $stmt->execute([$user['user_id']]);
+            $provider = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if (!$provider) {
-            http_response_code(404);
-            echo json_encode(["success" => false, "message" => "Service provider profile not found"]);
-            return;
+            if (!$provider) {
+                http_response_code(404);
+                echo json_encode(["success" => false, "message" => "Service provider profile not found"]);
+                return;
+            }
+
+            $providerId = $provider['provider_id'];
+
+            // Total reviews + average rating
+            $stmt = $this->db->prepare("
+                SELECT COUNT(*) AS total_reviews, AVG(rating) AS avg_rating
+                FROM reviews
+                WHERE provider_id = ?
+            ");
+            $stmt->execute([$providerId]);
+            $reviewStats = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            // Active projects — distinct projects (via assigned tasks) that aren't finished
+            $stmt = $this->db->prepare("
+                SELECT COUNT(DISTINCT t.project_id) AS active_projects
+                FROM task_assignments ta
+                JOIN tasks t ON t.task_id = ta.task_id
+                JOIN projects p ON p.project_id = t.project_id
+                WHERE ta.provider_id = ? AND p.is_finished = 0
+            ");
+            $stmt->execute([$providerId]);
+            $activeProjects = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            // Jobs completed — assigned tasks that are finished
+            $stmt = $this->db->prepare("
+                SELECT COUNT(*) AS jobs_completed
+                FROM task_assignments ta
+                JOIN tasks t ON t.task_id = ta.task_id
+                WHERE ta.provider_id = ? AND t.is_finished = 1
+            ");
+            $stmt->execute([$providerId]);
+            $jobsCompleted = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            // Pending job requests (non-expired)
+            $stmt = $this->db->prepare("
+                SELECT COUNT(*) AS pending_requests
+                FROM service_requests
+                WHERE provider_id = ? AND request_status = 'pending'
+                  AND (expires_at IS NULL OR expires_at >= NOW())
+            ");
+            $stmt->execute([$providerId]);
+            $pendingRequests = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            echo json_encode([
+                "success"          => true,
+                "total_reviews"    => (int) $reviewStats['total_reviews'],
+                "avg_rating"       => $reviewStats['avg_rating'] !== null ? round((float) $reviewStats['avg_rating'], 1) : 0,
+                "active_projects"  => (int) $activeProjects['active_projects'],
+                "jobs_completed"   => (int) $jobsCompleted['jobs_completed'],
+                "pending_requests" => (int) $pendingRequests['pending_requests'],
+            ]);
+        } catch (PDOException $e) {
+            error_log("getDashboardStats error: " . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(["success" => false, "message" => "Failed to load dashboard stats"]);
         }
-
-        $providerId = $provider['provider_id'];
-
-        // Total reviews + average rating
-        $stmt = $this->db->prepare("
-            SELECT COUNT(*) AS total_reviews, AVG(rating) AS avg_rating
-            FROM reviews
-            WHERE provider_id = ?
-        ");
-        $stmt->execute([$providerId]);
-        $reviewStats = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        // Active projects — distinct projects (via assigned tasks) that aren't finished
-        $stmt = $this->db->prepare("
-            SELECT COUNT(DISTINCT t.project_id) AS active_projects
-            FROM task_assignments ta
-            JOIN tasks t ON t.task_id = ta.task_id
-            JOIN projects p ON p.project_id = t.project_id
-            WHERE ta.provider_id = ? AND p.is_finished = 0
-        ");
-        $stmt->execute([$providerId]);
-        $activeProjects = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        // Jobs completed — assigned tasks that are finished
-        $stmt = $this->db->prepare("
-            SELECT COUNT(*) AS jobs_completed
-            FROM task_assignments ta
-            JOIN tasks t ON t.task_id = ta.task_id
-            WHERE ta.provider_id = ? AND t.is_finished = 1
-        ");
-        $stmt->execute([$providerId]);
-        $jobsCompleted = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        // Pending job requests (non-expired)
-        $stmt = $this->db->prepare("
-            SELECT COUNT(*) AS pending_requests
-            FROM service_requests
-            WHERE provider_id = ? AND request_status = 'pending'
-              AND (expires_at IS NULL OR expires_at >= NOW())
-        ");
-        $stmt->execute([$providerId]);
-        $pendingRequests = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        echo json_encode([
-            "success"          => true,
-            "total_reviews"    => (int) $reviewStats['total_reviews'],
-            "avg_rating"       => $reviewStats['avg_rating'] !== null ? round((float) $reviewStats['avg_rating'], 1) : 0,
-            "active_projects"  => (int) $activeProjects['active_projects'],
-            "jobs_completed"   => (int) $jobsCompleted['jobs_completed'],
-            "pending_requests" => (int) $pendingRequests['pending_requests'],
-        ]);
     }
 
 
@@ -189,39 +195,44 @@ public function toggleAvailability() {
 
     // ── GET RECENT REVIEWS ─────────────────────────────────────────────────────
     public function getRecentReviews() {
-        $user = requireRole('service_provider');
+        try {
+            $user = requireRole('service_provider');
 
-        $stmt = $this->db->prepare("SELECT provider_id FROM service_providers WHERE user_id = ?");
-        $stmt->execute([$user['user_id']]);
-        $provider = $stmt->fetch(PDO::FETCH_ASSOC);
+            $stmt = $this->db->prepare("SELECT provider_id FROM service_providers WHERE user_id = ?");
+            $stmt->execute([$user['user_id']]);
+            $provider = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if (!$provider) {
-            http_response_code(404);
-            echo json_encode(["success" => false, "message" => "Service provider profile not found"]);
-            return;
+            if (!$provider) {
+                http_response_code(404);
+                echo json_encode(["success" => false, "message" => "Service provider profile not found"]);
+                return;
+            }
+
+            $stmt = $this->db->prepare("
+                SELECT r.review_id, r.rating, r.comment, r.review_date, u.fname, u.lname
+                FROM reviews r
+                JOIN property_owners po ON po.owner_id = r.owner_id
+                JOIN users u ON u.user_id = po.user_id
+                WHERE r.provider_id = ?
+                ORDER BY r.review_date DESC
+                LIMIT 5
+            ");
+            $stmt->execute([$provider['provider_id']]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $reviews = array_map(function ($r) {
+                return [
+                    "name"    => $r['fname'] . ' ' . substr($r['lname'], 0, 1) . '.',
+                    "rating"  => (int) $r['rating'],
+                    "comment" => $r['comment'],
+                ];
+            }, $rows);
+
+            echo json_encode(["success" => true, "reviews" => $reviews]);
+        } catch (PDOException $e) {
+            error_log("getRecentReviews error: " . $e->getMessage());
+            echo json_encode(["success" => true, "reviews" => []]);
         }
-
-        $stmt = $this->db->prepare("
-            SELECT r.review_id, r.rating, r.comment, r.review_date, u.fname, u.lname
-            FROM reviews r
-            JOIN property_owners po ON po.owner_id = r.owner_id
-            JOIN users u ON u.user_id = po.user_id
-            WHERE r.provider_id = ?
-            ORDER BY r.review_date DESC
-            LIMIT 5
-        ");
-        $stmt->execute([$provider['provider_id']]);
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        $reviews = array_map(function ($r) {
-            return [
-                "name"    => $r['fname'] . ' ' . substr($r['lname'], 0, 1) . '.',
-                "rating"  => (int) $r['rating'],
-                "comment" => $r['comment'],
-            ];
-        }, $rows);
-
-        echo json_encode(["success" => true, "reviews" => $reviews]);
     }
     // ── GET JOB REQUESTS ───────────────────────────────────────────────────────
     public function getJobRequests() {
@@ -455,15 +466,31 @@ public function toggleAvailability() {
             return;
         }
 
-        $stmt = $this->db->prepare("
-            SELECT r.review_id, r.rating, r.comment, r.review_date, r.provider_reply,
-                   u.fname, u.lname
-            FROM reviews r
-            JOIN property_owners po ON po.owner_id = r.owner_id
-            JOIN users u ON u.user_id = po.user_id
-            WHERE r.provider_id = ?
-            ORDER BY r.review_date DESC
-        ");
+        try {
+            $hasReply = $this->db->query("SHOW COLUMNS FROM reviews LIKE 'provider_reply'")->fetch();
+        } catch (PDOException $e) {
+            $hasReply = false;
+        }
+
+        if ($hasReply) {
+            $sql = "SELECT r.review_id, r.rating, r.comment, r.review_date, r.provider_reply,
+                           u.fname, u.lname
+                    FROM reviews r
+                    JOIN property_owners po ON po.owner_id = r.owner_id
+                    JOIN users u ON u.user_id = po.user_id
+                    WHERE r.provider_id = ?
+                    ORDER BY r.review_date DESC";
+        } else {
+            $sql = "SELECT r.review_id, r.rating, r.comment, r.review_date,
+                           u.fname, u.lname
+                    FROM reviews r
+                    JOIN property_owners po ON po.owner_id = r.owner_id
+                    JOIN users u ON u.user_id = po.user_id
+                    WHERE r.provider_id = ?
+                    ORDER BY r.review_date DESC";
+        }
+
+        $stmt = $this->db->prepare($sql);
         $stmt->execute([$provider['provider_id']]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -479,7 +506,7 @@ public function toggleAvailability() {
                 "stars"    => (int) $r['rating'],
                 "date"     => date('F j, Y', strtotime($r['review_date'])),
                 "text"     => $r['comment'],
-                "reply"    => $r['provider_reply'],
+                "reply"    => $r['provider_reply'] ?? null,
                 "photos"   => array_map(fn($p) => [
                     "photo_id" => $p['photo_id'],
                     "url"      => $this->getUploadsBaseUrl() . $p['file_path'],
