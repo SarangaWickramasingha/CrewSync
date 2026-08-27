@@ -316,7 +316,23 @@ elseif ($uri === '/api/supplier/profile' && $method === 'PUT') {
     updateSupplierProfile();
 }
 
-
+// ── NOTIFICATIONS ────────────────────────────────────────────────────────────
+elseif ($uri === '/api/notifications' && $method === 'GET') {
+    require_once __DIR__ . '/routes/notifications.php';
+    getUserNotifications();
+}
+elseif ($uri === '/api/notifications' && $method === 'POST') {
+    require_once __DIR__ . '/routes/notifications.php';
+    createNotification();
+}
+elseif ($uri === '/api/notifications/read' && $method === 'PUT') {
+    require_once __DIR__ . '/routes/notifications.php';
+    markNotificationsRead();
+}
+elseif (preg_match('#^/api/notifications/(\d+)$#', $uri, $matches) && $method === 'DELETE') {
+    require_once __DIR__ . '/routes/notifications.php';
+    deleteNotification($matches[1]);
+}
 
 else {
     http_response_code(404);
