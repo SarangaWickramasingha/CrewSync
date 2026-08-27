@@ -39,6 +39,28 @@ function generateToken(array $payload): string {
     // Final JWT = header.payload.signature
     return "$header.$payload.$signature";
 }
+    // ───────────────────────── GENERATE SHORT-LIVED TOKEN ────────────────────────
+// Same as generateToken(), but with a custom expiry in seconds instead of
+// the default 7-day JWT_EXPIRY. Used for things like OTP-verification proof,
+// which should only be valid for a few minutes.
+function generateShortToken(array $payload, int $expirySeconds): string {
+    $header = base64UrlEncode(json_encode([
+        'alg' => 'HS256',
+        'typ' => 'JWT'
+    ]));
+
+    $payload['iat'] = time();
+    $payload['exp'] = time() + $expirySeconds;
+
+    $payload = base64UrlEncode(json_encode($payload));
+
+    $signature = base64UrlEncode(
+        hash_hmac('sha256', "$header.$payload", JWT_SECRET, true)
+    );
+
+    return "$header.$payload.$signature";
+}
+
 
 
 // ───────────────────────── VERIFY TOKEN ──────────────────────────────────────────
