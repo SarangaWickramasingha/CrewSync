@@ -30,6 +30,16 @@ elseif ($uri === '/api/auth/check-email' && $method === 'POST') {
     require_once __DIR__ . '/routes/auth.php';
     checkEmail();
 }
+
+elseif ($uri === '/api/auth/send-otp' && $method === 'POST') {
+    require_once __DIR__ . '/routes/auth.php';
+    sendOtp();
+}
+elseif ($uri === '/api/auth/verify-otp' && $method === 'POST') {
+    require_once __DIR__ . '/routes/auth.php';
+    verifyOtp();
+}
+
 elseif ($uri === '/api/auth/me' && $method === 'GET') {
     require_once __DIR__ . '/routes/auth.php';
     me();
@@ -320,4 +330,14 @@ else {
 function checkEmail() {
     $controller = new AuthController();
     $controller->checkEmail();
+}
+
+function sendOtp() {
+    $controller = new AuthController();
+    $controller->sendOtp();
+}
+
+function verifyOtp() {
+    $controller = new AuthController();
+    $controller->verifyOtp();
 }
