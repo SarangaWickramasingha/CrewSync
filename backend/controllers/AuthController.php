@@ -9,90 +9,164 @@ class AuthController {
 
     private $db;
 
-public function __construct() {
-    $this->db = Database::getInstance()->getConnection(); // 👈 singleton way
-}
-
-public function login() {
-
-    $userModel = new User($this->db);
-
-    $data = json_decode(file_get_contents("php://input"), true);
-
-    $email    = $data['email']    ?? '';
-    $password = $data['password'] ?? '';
-
-    $user = $userModel->findByEmail($email);
-
-    if (!$user) {
-        echo json_encode([
-            "success" => false,
-            "message" => "Invalid email or password"
-        ]);
-        return;
+    public function __construct() {
+        $this->db = Database::getInstance()->getConnection(); // 👈 singleton way
     }
 
-    if (!password_verify($password, $user['password_hash'])) {
-        echo json_encode([
-            "success" => false,
-            "message" => "Invalid email or password"
-        ]);
-        return;
-    }
+    public function login() {
 
-    // Generate JWT with user data embedded inside
+        $userModel = new User($this->db);
+
+        $data = json_decode(file_get_contents("php://input"), true);
+
+        $email    = $data['email']    ?? '';
+        $password = $data['password'] ?? '';
+
+        $user = $userModel->findByEmail($email);
+
+        if (!$user) {
+            echo json_encode([
+                "success" => false,
+                "message" => "Invalid email or password"
+            ]);
+            return;
+        }
+
+        if (!password_verify($password, $user['password_hash'])) {
+            echo json_encode([
+                "success" => false,
+                "message" => "Invalid email or password"
+            ]);
+            return;
+        }
+
+        // Generate JWT with user data embedded inside
         $token = generateToken([
             'user_id' => $user['user_id'],
             'name'    => $user['fname'] . ' ' . $user['lname'],
             'role'    => $user['role'],
         ]);
 
-    // Set it as an httpOnly cookie — JS cannot read this
-    setAuthCookie($token);
+        // Set it as an httpOnly cookie — JS cannot read this
+        setAuthCookie($token);
 
-    // Still return user data in the response body
-    // Frontend uses this to set React state (name, role, avatar)
-    echo json_encode([
-        "success" => true,
-        "message" => "Login successful",
-        "user" => [
-            "user_id" => $user['user_id'],
-            "name" => $user['fname'] . ' ' . $user['lname'],
-            "role"    => $user['role']
-        ]
-    ]);
-}
-public function me() {
-    // Validate the cookie and get the user payload
-    $user = requireAuth();
+        // Still return user data in the response body
+        // Frontend uses this to set React state (name, role, avatar)
+        echo json_encode([
+            "success" => true,
+            "message" => "Login successful",
+            "user" => [
+                "user_id" => $user['user_id'],
+                "name" => $user['fname'] . ' ' . $user['lname'],
+                "role"    => $user['role']
+            ]
+        ]);
+    }
 
-    echo json_encode([
-        "success" => true,
-        "user" => [
-            "user_id" => $user['user_id'],
-            "name"    => $user['name'],
-            "role"    => $user['role']
-        ]
-    ]);
-}
+    public function sendOtp() {
+        $data = json_decode(file_get_contents("php://input"), true);
+        $email = trim($data['email'] ?? '');
 
-public function logout() {
-    clearAuthCookie();
-    echo json_encode([
-        "success" => true,
-        "message" => "Logged out successfully"
-    ]);
-}
+        if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            http_response_code(400);
+            echo json_encode(["success" => false, "message" => "A valid email is required"]);
+            return;
+        }
 
+        $userModel = new User($this->db);
+        if ($userModel->emailExists($email)) {
+            http_response_code(409);
+            echo json_encode(["success" => false, "message" => "Email already registered"]);
+            return;
+        }
 
+        require_once __DIR__ . '/../models/Otp.php';
+        require_once __DIR__ . '/../config/mailer.php';
 
+        $otpModel = new Otp($this->db);
+        $otp = $otpModel->generate($email);
 
+        $sent = sendOtpEmail($email, $otp);
+
+        if (!$sent) {
+            http_response_code(500);
+            echo json_encode(["success" => false, "message" => "Could not send verification email. Please try again."]);
+            return;
+        }
+
+        echo json_encode(["success" => true, "message" => "Verification code sent to your email."]);
+    }
+
+    public function verifyOtp() {
+        $data = json_decode(file_get_contents("php://input"), true);
+        $email = trim($data['email'] ?? '');
+        $otp   = trim($data['otp'] ?? '');
+
+        if (!$email || !$otp) {
+            http_response_code(400);
+            echo json_encode(["success" => false, "message" => "Email and code are required"]);
+            return;
+        }
+
+        require_once __DIR__ . '/../models/Otp.php';
+        $otpModel = new Otp($this->db);
+
+        if (!$otpModel->verify($email, $otp)) {
+            http_response_code(400);
+            echo json_encode(["success" => false, "message" => "Invalid or expired code"]);
+            return;
+        }
+
+        // Proof-of-verification token — register() will require this,
+        // valid for 15 minutes, tied to this specific email only.
+        $otpToken = generateShortToken([
+            'email'   => $email,
+            'purpose' => 'otp_verified',
+        ], 15 * 60);
+
+        echo json_encode([
+            "success" => true,
+            "message" => "Email verified.",
+            "otp_token" => $otpToken,
+        ]);
+    }
+
+    public function me() {
+        // Validate the cookie and get the user payload
+        $user = requireAuth();
+
+        echo json_encode([
+            "success" => true,
+            "user" => [
+                "user_id" => $user['user_id'],
+                "name"    => $user['name'],
+                "role"    => $user['role']
+            ]
+        ]);
+    }
+
+    public function logout() {
+        clearAuthCookie();
+        echo json_encode([
+            "success" => true,
+            "message" => "Logged out successfully"
+        ]);
+    }
 
     public function register() {
 
         $userModel = new User($this->db);
 
         $data = json_decode(file_get_contents("php://input"), true);
+
+        $otpToken = $data['otp_token'] ?? '';
+        $otpPayload = $otpToken ? verifyToken($otpToken) : false;
+
+        if (!$otpPayload || ($otpPayload['purpose'] ?? '') !== 'otp_verified' || ($otpPayload['email'] ?? '') !== ($data['email'] ?? '')) {
+            http_response_code(400);
+            echo json_encode(["success" => false, "message" => "Email verification required or expired. Please verify your email again."]);
+            return;
+        }
 
         // 1. Common required fields
         $required = ['email', 'password', 'role', 'fname', 'lname', 'contact_no', 'district'];
@@ -164,27 +238,24 @@ public function logout() {
         }
     }
 
-
-
     /**
      * Email check -Registration
      */
     public function checkEmail() {
-    $data = json_decode(file_get_contents("php://input"), true);
+        $data = json_decode(file_get_contents("php://input"), true);
 
-    $email = trim($data['email'] ?? '');
+        $email = trim($data['email'] ?? '');
 
-    if (!$email) {
-        http_response_code(400);
-        echo json_encode(["success" => false, "message" => "Email is required"]);
-        return;
+        if (!$email) {
+            http_response_code(400);
+            echo json_encode(["success" => false, "message" => "Email is required"]);
+            return;
+        }
+
+        $userModel = new User($this->db);
+        $exists = $userModel->emailExists($email);
+
+        echo json_encode(["exists" => $exists]);
     }
-
-    $userModel = new User($this->db);
-    $exists = $userModel->emailExists($email);
-
-    echo json_encode(["exists" => $exists]);
-}
-
 
 }
