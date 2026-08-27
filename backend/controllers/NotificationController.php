@@ -14,7 +14,7 @@ class NotificationController {
         $user = requireAuth();
         
         $stmt = $this->db->prepare("
-            SELECT notif_id as id, type, message as text, is_read as `read`, created_at as time
+            SELECT notification_id as id, title as type, message as text, is_read as `read`, created_at as time
             FROM notifications 
             WHERE user_id = ? 
             ORDER BY created_at DESC
@@ -47,7 +47,7 @@ class NotificationController {
         }
 
         $stmt = $this->db->prepare("
-            INSERT INTO notifications (user_id, type, message, is_read) 
+            INSERT INTO notifications (user_id, title, message, is_read) 
             VALUES (?, ?, ?, 0)
         ");
         $stmt->execute([$user['user_id'], $type, $message]);
@@ -62,7 +62,7 @@ class NotificationController {
         $notifId = isset($data['id']) ? intval($data['id']) : null;
 
         if ($notifId) {
-            $stmt = $this->db->prepare("UPDATE notifications SET is_read = 1 WHERE notif_id = ? AND user_id = ?");
+            $stmt = $this->db->prepare("UPDATE notifications SET is_read = 1 WHERE notification_id = ? AND user_id = ?");
             $stmt->execute([$notifId, $user['user_id']]);
         } else {
             $stmt = $this->db->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ?");
@@ -76,7 +76,7 @@ class NotificationController {
     public function deleteNotification($notifId) {
         $user = requireAuth();
         
-        $stmt = $this->db->prepare("DELETE FROM notifications WHERE notif_id = ? AND user_id = ?");
+        $stmt = $this->db->prepare("DELETE FROM notifications WHERE notification_id = ? AND user_id = ?");
         $stmt->execute([$notifId, $user['user_id']]);
 
         echo json_encode(["success" => true]);
