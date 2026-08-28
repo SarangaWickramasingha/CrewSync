@@ -1,16 +1,9 @@
 <?php
 
 // ───────────────────────── JWT CONFIGURATION ──────────────────────────────────
-// Secret key used to sign and verify tokens
-// WARNING: Change this before deploying to production
-// WARNING: Changing this will log out ALL users (all existing tokens become invalid)
-define('JWT_SECRET', 'CrewSync_JWT_S3cr3t#K9mP2qL8xZ4vN7wR1yT6!2026');
-
-// How long the token is valid (7 days in seconds)
-define('JWT_EXPIRY', 7 * 24 * 60 * 60);
-
-// Cookie name stored in the browser
-define('JWT_COOKIE_NAME', 'crewsync_token');
+define('JWT_SECRET', Env::get('JWT_SECRET', 'CHANGE_ME'));
+define('JWT_EXPIRY', (int) Env::get('JWT_EXPIRY', 604800));
+define('JWT_COOKIE_NAME', Env::get('JWT_COOKIE_NAME', 'crewsync_token'));
 
 
 // ───────────────────────── GENERATE TOKEN ────────────────────────────────────────

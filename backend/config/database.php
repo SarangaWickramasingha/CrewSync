@@ -1,18 +1,24 @@
 <?php
 class Database {
-    private $host = "localhost";
-    private $db_name = "crewsync";
-    private $username = "root";
-    private $password = "";
+    private $host;
+    private $port;
+    private $db_name;
+    private $username;
+    private $password;
 
     private static $instance = null;
     private $conn;
 
-    // blocked from outside - no "new Database()" allowed
     private function __construct() {
+        $this->host = Env::get('DB_HOST', 'localhost');
+        $this->port = (int) Env::get('DB_PORT', 3306);
+        $this->db_name = Env::get('DB_NAME', 'crewsync');
+        $this->username = Env::get('DB_USERNAME', 'root');
+        $this->password = Env::get('DB_PASSWORD', '');
+
         try {
             $this->conn = new PDO(
-                "mysql:host=" . $this->host . ";dbname=" . $this->db_name,
+                "mysql:host=" . $this->host . ";port=" . $this->port . ";dbname=" . $this->db_name,
                 $this->username,
                 $this->password
             );

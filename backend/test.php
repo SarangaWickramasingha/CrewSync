@@ -1,12 +1,14 @@
 <?php
 
+require_once "config/Env.php";
+Env::load();
 require_once "config/database.php";
 
-$db = new Database();
-$conn = $db->connect();
+$db = Database::getInstance();
+$conn = $db->getConnection();
 
-if($conn){
+if ($conn) {
     echo "Database Connected Successfully";
-}else {
+} else {
     echo "Database Connection Failed";
 }

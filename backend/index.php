@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/config/Env.php';
+Env::load();
 require_once __DIR__ . '/config/cors.php';
 require_once __DIR__ . '/config/database.php';
 

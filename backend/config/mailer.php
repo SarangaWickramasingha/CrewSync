@@ -5,16 +5,12 @@ require_once __DIR__ . '/../vendor/autoload.php';
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-// ── MAIL SETTINGS ──────────────────────────────────────────────────────────
-// Use a Gmail App Password, NOT your normal Gmail password.
-// Generate one at: https://myaccount.google.com/apppasswords
-// (requires 2-Step Verification to be turned on for your Google account)
-define('MAIL_HOST', 'smtp.gmail.com');
-define('MAIL_PORT', 587);
-define('MAIL_USERNAME', 'crewsync2027@gmail.com');      // ← your Gmail address
-define('MAIL_PASSWORD', 'vvxr bsnf iqhu vmuh');         // ← 16-char App Password
-define('MAIL_FROM_ADDRESS', 'crewsync2027@gmail.com');   // ← usually same as username
-define('MAIL_FROM_NAME', 'CrewSync');
+define('MAIL_HOST', Env::get('MAIL_HOST', 'smtp.gmail.com'));
+define('MAIL_PORT', (int) Env::get('MAIL_PORT', 587));
+define('MAIL_USERNAME', Env::get('MAIL_USERNAME', ''));
+define('MAIL_PASSWORD', Env::get('MAIL_PASSWORD', ''));
+define('MAIL_FROM_ADDRESS', Env::get('MAIL_FROM_ADDRESS', ''));
+define('MAIL_FROM_NAME', Env::get('MAIL_FROM_NAME', 'CrewSync'));
 
 /**
  * Sends an HTML email via SMTP. Returns true on success, false on failure.
