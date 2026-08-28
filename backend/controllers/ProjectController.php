@@ -186,7 +186,7 @@ class ProjectController {
 
 
         $stmt = $this->db->prepare("
-            SELECT p.is_finished
+            SELECT p.is_finished, p.project_name
             FROM projects p
             JOIN property_owners po ON po.owner_id = p.owner_id
             WHERE po.user_id = ? AND p.project_id = ?
