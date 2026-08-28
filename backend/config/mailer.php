@@ -7,14 +7,13 @@ use PHPMailer\PHPMailer\Exception;
 
 define('MAIL_HOST', Env::get('MAIL_HOST', 'smtp.gmail.com'));
 define('MAIL_PORT', (int) Env::get('MAIL_PORT', 587));
-define('MAIL_USERNAME', Env::get('MAIL_USERNAME', ''));
-define('MAIL_PASSWORD', Env::get('MAIL_PASSWORD', ''));
-define('MAIL_FROM_ADDRESS', Env::get('MAIL_FROM_ADDRESS', ''));
+define('MAIL_USERNAME', Env::get('MAIL_USERNAME', 'crewsync2027@gmail.com'));
+define('MAIL_PASSWORD', Env::get('MAIL_PASSWORD', 'vvxr bsnf iqhu vmuh'));
+define('MAIL_FROM_ADDRESS', Env::get('MAIL_FROM_ADDRESS', 'crewsync2027@gmail.com')); // Fixed fallback
 define('MAIL_FROM_NAME', Env::get('MAIL_FROM_NAME', 'CrewSync'));
 
 /**
  * Sends an HTML email via SMTP. Returns true on success, false on failure.
- * Failures are written to PHP's error log, not shown to the end user.
  */
 function sendMail(string $toEmail, string $toName, string $subject, string $htmlBody): bool {
     $mail = new PHPMailer(true);
