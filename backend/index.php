@@ -336,6 +336,15 @@ elseif (preg_match('#^/api/notifications/(\d+)$#', $uri, $matches) && $method ==
     deleteNotification($matches[1]);
 }
 
+elseif ($uri === '/api/auth/forgot-password/send-otp' && $method === 'POST') {
+    require_once __DIR__ . '/routes/auth.php';
+    forgotPasswordSendOtp();
+}
+elseif ($uri === '/api/auth/forgot-password/reset' && $method === 'POST') {
+    require_once __DIR__ . '/routes/auth.php';
+    forgotPasswordReset();
+}
+
 else {
     http_response_code(404);
     echo json_encode([
