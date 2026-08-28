@@ -41,6 +41,11 @@ class Env {
     }
 
     public static function get(string $key, mixed $default = null): mixed {
+        // Real environment variables win over the .env file
+        $env = getenv($key);
+        if ($env !== false) {
+            return $env;
+        }
         return self::$vars[$key] ?? $default;
     }
 
