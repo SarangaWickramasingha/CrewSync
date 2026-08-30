@@ -19,3 +19,10 @@ function logout() {
     $controller = new AuthController();
     $controller->logout();
 }
+
+function forgotPasswordSendOtp() {
+    (new AuthController())->forgotPasswordSendOtp();
+}
+function forgotPasswordReset() {
+    (new AuthController())->forgotPasswordReset();
+}

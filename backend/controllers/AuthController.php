@@ -258,4 +258,76 @@ class AuthController {
         echo json_encode(["exists" => $exists]);
     }
 
+    public function forgotPasswordSendOtp() {
+    $data  = json_decode(file_get_contents("php://input"), true);
+    $email = trim($data['email'] ?? '');
+
+    if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        http_response_code(400);
+        echo json_encode(["success" => false, "message" => "Valid email is required"]);
+        return;
+    }
+
+    $userModel = new User($this->db);
+    if (!$userModel->emailExists($email)) {
+        http_response_code(404);
+        echo json_encode(["success" => false, "message" => "No account found with this email"]);
+        return;
+    }
+
+    require_once __DIR__ . '/../models/Otp.php';
+    require_once __DIR__ . '/../config/mailer.php';
+
+    $otpModel = new Otp($this->db);
+    $otp      = $otpModel->generate($email);
+    $sent     = sendOtpEmail($email,$otp);
+
+    if (!$sent) {
+        http_response_code(500);
+        echo json_encode(["success" => false, "message" => "Failed to send OTP. Please try again."]);
+        return;
+    }
+
+    echo json_encode([
+        "success" => true,
+        "message" => "OTP sent to $email"
+    ]);
+}
+
+public function forgotPasswordReset() {
+    $data        = json_decode(file_get_contents("php://input"), true);
+    $email       = trim($data['email']       ?? '');
+    $otp         = trim($data['otp']         ?? '');
+    $newPassword = trim($data['newPassword'] ?? '');
+
+    if (!$email || !$otp || !$newPassword) {
+        http_response_code(400);
+        echo json_encode(["success" => false, "message" => "Email, OTP and new password are required"]);
+        return;
+    }
+
+    if (strlen($newPassword) < 8) {
+        http_response_code(400);
+        echo json_encode(["success" => false, "message" => "Password must be at least 8 characters"]);
+        return;
+    }
+
+    require_once __DIR__ . '/../models/Otp.php';
+    $otpModel = new Otp($this->db);
+
+    if (!$otpModel->verify($email, $otp)) {
+        http_response_code(400);
+        echo json_encode(["success" => false, "message" => "Invalid or expired OTP"]);
+        return;
+    }
+
+    $userModel = new User($this->db);
+    $updated   = $userModel->updatePassword($email, $newPassword);
+
+    echo json_encode([
+        "success" => $updated,
+        "message" => $updated ? "Password reset successfully" : "Failed to reset password"
+    ]);
+}
+
 }

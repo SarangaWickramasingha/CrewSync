@@ -15,6 +15,15 @@ class User {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
+    public function updatePassword(string $email, string $newPassword): bool {
+    $stmt = $this->conn->prepare(
+        "UPDATE users SET password_hash = ? WHERE email = ?"
+    );
+    return $stmt->execute([
+        password_hash($newPassword, PASSWORD_BCRYPT),
+        $email
+    ]);
+}
     public function emailExists($email) {
         $stmt = $this->conn->prepare("SELECT user_id FROM users WHERE email = ?");
         $stmt->execute([$email]);
