@@ -6,10 +6,9 @@ $allowed_origins = array_map('trim', explode(',', Env::get('CORS_ORIGINS', 'http
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 
 // If the request is coming from Next.js, allow it
-// if (isset($_SERVER['HTTP_ORIGIN']) && in_array($_SERVER['HTTP_ORIGIN'], $allowed_origins)) {
-//     header("Access-Control-Allow-Origin: *");
-// }
-header("Access-Control-Allow-Origin: *");
+if (isset($_SERVER['HTTP_ORIGIN']) && in_array($_SERVER['HTTP_ORIGIN'], $allowed_origins)) {
+    header("Access-Control-Allow-Origin: $origin");
+}
 
 // What methods can Next.js use?
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
