@@ -4,8 +4,15 @@ require_once __DIR__ . '/fpdf19/fpdf.php';
 
 class PdfGenerator extends FPDF {
 
-    const REPORTS_DIR = 'C:/xampp/htdocs/crewsync/reports/';
-    const REPORTS_URL = 'http://127.0.0.1/crewsync/reports/';
+    const REPORTS_DIR = __DIR__ . '/../reports/';
+
+    private function reportsUrl() {
+        $env = Env::get('REPORTS_URL', '');
+        if ($env !== '') {
+            return rtrim($env, '/') . '/';
+        }
+        return 'http://localhost/CrewSync-backend/backend/reports/';
+    }
 
     private $title = '';
 
@@ -212,6 +219,6 @@ class PdfGenerator extends FPDF {
         $filename = $prefix . '_' . date('Ymd_His') . '.pdf';
         $path     = self::REPORTS_DIR . $filename;
         $this->Output('F', $path);
-        return self::REPORTS_URL . $filename;
+        return $this->reportsUrl() . $filename;
     }
 }
