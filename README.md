@@ -23,4 +23,4 @@ Notes:
 
 - Drop `backend/` into `C:\xampp\htdocs\CrewSync-backend\backend`.
 - Create `backend/.env` from `backend/.env.example` and point `DB_HOST` at your MySQL.
-- Import `database/crewsync_db_final.sql` into MySQL.
+- Import `database/crewsync_db_final.sql` into MySQL
