@@ -6,17 +6,30 @@ class PdfGenerator extends FPDF {
 
     const REPORTS_DIR = __DIR__ . '/../reports/';
 
+    public static function reportsDir(): string {
+        $env = Env::get('REPORTS_DIR_PATH', '');
+        return $env !== '' ? rtrim($env, '/\\') . DIRECTORY_SEPARATOR : self::REPORTS_DIR;
+    }
+
     private function reportsUrl() {
-        $env = Env::get('REPORTS_URL', '');
-        if ($env !== '') {
-            return rtrim($env, '/') . '/';
-        }
         $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-        $host   = $_SERVER['HTTP_HOST'] ?? 'localhost';
-        if (isset($_SERVER['REQUEST_URI']) && preg_match('#^(.*?/backend/)#', $_SERVER['REQUEST_URI'], $m)) {
-            return $scheme . '://' . $host . $m[1] . 'reports/';
+
+        $explicit = Env::get('REPORTS_URL', '');
+        if ($explicit !== '') {
+            return rtrim($explicit, '/') . '/';
         }
-        return $scheme . '://' . $host . '/backend/reports/';
+
+        $host    = Env::get('BACKEND_HOST', '');
+        $reports = Env::get('REPORTS_PATH', '');
+        if ($host !== '' && $reports !== '') {
+            return $scheme . '://' . rtrim($host, '/') . '/' . trim($reports, '/') . '/';
+        }
+
+        $reqHost = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        if (isset($_SERVER['REQUEST_URI']) && preg_match('#^(.*?/backend/)#', $_SERVER['REQUEST_URI'], $m)) {
+            return $scheme . '://' . $reqHost . $m[1] . 'reports/';
+        }
+        return $scheme . '://' . $reqHost . '/reports/';
     }
 
     private $title = '';
@@ -221,7 +234,7 @@ class PdfGenerator extends FPDF {
 
     // ── SAVE & RETURN URL ──────────────────────────────────────────────────────
     private function outputFile($prefix) {
-        $dir = self::REPORTS_DIR;
+        $dir = self::reportsDir();
         if (!is_dir($dir)) {
             if (!@mkdir($dir, 0775, true)) {
                 throw new RuntimeException('Reports directory is not writable: ' . $dir);

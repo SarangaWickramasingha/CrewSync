@@ -39,7 +39,7 @@ class ReportController {
     private function fileExists($filePath) {
         if (!$filePath) return false;
         $name = basename(parse_url($filePath, PHP_URL_PATH));
-        return $name !== '' && file_exists(PdfGenerator::REPORTS_DIR . $name);
+        return $name !== '' && file_exists(PdfGenerator::reportsDir() . $name);
     }
 
     // ── GENERATE A TASK REPORT ─────────────────────────────────────────────────
@@ -59,7 +59,16 @@ class ReportController {
             return;
         }
 
-        // TEMP: remote DB saving disabled — only generate the PDF.
+        $existing = $this->model->findExisting($task['project_id'], $taskId, 'task');
+        if ($existing && $this->fileExists($existing['file_path'])) {
+            echo json_encode([
+                "success"   => true,
+                "report_id" => (int) $existing['report_id'],
+                "file_path" => $existing['file_path'],
+            ]);
+            return;
+        }
+
         try {
             $pdf = new PdfGenerator();
             $filePath = $pdf->taskReport($this->model->taskFacts($task));
@@ -70,9 +79,26 @@ class ReportController {
             return;
         }
 
+        if ($existing) {
+            $this->model->updateFile($existing['report_id'], $filePath);
+            echo json_encode([
+                "success"   => true,
+                "report_id" => (int) $existing['report_id'],
+                "file_path" => $filePath,
+            ]);
+            return;
+        }
+
+        $reportId = $this->model->insert($task['project_id'], $taskId, 'task', $filePath);
+        if (!$reportId) {
+            http_response_code(500);
+            echo json_encode(["success" => false, "message" => "Failed to store the report."]);
+            return;
+        }
+
         echo json_encode([
             "success"   => true,
-            "report_id" => null,
+            "report_id" => $reportId,
             "file_path" => $filePath,
         ]);
     }
@@ -94,7 +120,16 @@ class ReportController {
             return;
         }
 
-        // TEMP: remote DB saving disabled — only generate the PDF.
+        $existing = $this->model->findExisting($projectId, null, 'project');
+        if ($existing && $this->fileExists($existing['file_path'])) {
+            echo json_encode([
+                "success"   => true,
+                "report_id" => (int) $existing['report_id'],
+                "file_path" => $existing['file_path'],
+            ]);
+            return;
+        }
+
         try {
             $pdf = new PdfGenerator();
             $filePath = $pdf->projectReport($this->model->projectFacts($project, $projectId));
@@ -105,9 +140,26 @@ class ReportController {
             return;
         }
 
+        if ($existing) {
+            $this->model->updateFile($existing['report_id'], $filePath);
+            echo json_encode([
+                "success"   => true,
+                "report_id" => (int) $existing['report_id'],
+                "file_path" => $filePath,
+            ]);
+            return;
+        }
+
+        $reportId = $this->model->insert($projectId, null, 'project', $filePath);
+        if (!$reportId) {
+            http_response_code(500);
+            echo json_encode(["success" => false, "message" => "Failed to store the report."]);
+            return;
+        }
+
         echo json_encode([
             "success"   => true,
-            "report_id" => null,
+            "report_id" => $reportId,
             "file_path" => $filePath,
         ]);
     }
