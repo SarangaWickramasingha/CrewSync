@@ -1,0 +1,9 @@
+# Environment (secrets — never commit)
+.env
+.env.*
+!.env.example
+
+# OS / editor
+Thumbs.db
+Desktop.ini
+.DS_Store

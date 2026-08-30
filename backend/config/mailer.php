@@ -1,47 +1,51 @@
 <?php
 
-require_once __DIR__ . '/../vendor/autoload.php';
-
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
-
-define('MAIL_HOST', Env::get('MAIL_HOST', 'smtp.gmail.com'));
-define('MAIL_PORT', (int) Env::get('MAIL_PORT', 587));
-define('MAIL_USERNAME', Env::get('MAIL_USERNAME', ''));
-define('MAIL_PASSWORD', Env::get('MAIL_PASSWORD', ''));
-define('MAIL_FROM_ADDRESS', Env::get('MAIL_FROM_ADDRESS', ''));
-define('MAIL_FROM_NAME', Env::get('MAIL_FROM_NAME', 'CrewSync'));
+define('RESEND_API_KEY', Env::get('RESEND_API_KEY', ''));
+define('RESEND_FROM_ADDRESS', Env::get('RESEND_FROM_ADDRESS', 'onboarding@resend.dev'));
+define('RESEND_FROM_NAME', Env::get('RESEND_FROM_NAME', 'CrewSync'));
 
 /**
- * Sends an HTML email via SMTP. Returns true on success, false on failure.
+ * Sends an HTML email via the Resend HTTP API (works on Render free tier —
+ * no SMTP required). Returns true on success, false on failure.
  * Failures are written to PHP's error log, not shown to the end user.
  */
 function sendMail(string $toEmail, string $toName, string $subject, string $htmlBody): bool {
-    $mail = new PHPMailer(true);
+    $from = RESEND_FROM_NAME !== ''
+        ? RESEND_FROM_NAME . ' <' . RESEND_FROM_ADDRESS . '>'
+        : RESEND_FROM_ADDRESS;
 
-    try {
-        $mail->isSMTP();
-        $mail->Host       = MAIL_HOST;
-        $mail->SMTPAuth   = true;
-        $mail->Username   = MAIL_USERNAME;
-        $mail->Password   = MAIL_PASSWORD;
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port       = MAIL_PORT;
+    $to = $toName !== '' ? $toName . ' <' . $toEmail . '>' : $toEmail;
 
-        $mail->setFrom(MAIL_FROM_ADDRESS, MAIL_FROM_NAME);
-        $mail->addAddress($toEmail, $toName);
+    $payload = [
+        'from'    => $from,
+        'to'      => [$to],
+        'subject' => $subject,
+        'html'    => $htmlBody,
+    ];
 
-        $mail->isHTML(true);
-        $mail->Subject = $subject;
-        $mail->Body    = $htmlBody;
-        $mail->AltBody = strip_tags($htmlBody);
+    $ch = curl_init('https://api.resend.com/emails');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => json_encode($payload),
+        CURLOPT_HTTPHEADER     => [
+            'Authorization: Bearer ' . RESEND_API_KEY,
+            'Content-Type: application/json',
+        ],
+        CURLOPT_TIMEOUT        => 20,
+    ]);
 
-        $mail->send();
-        return true;
-    } catch (Exception $e) {
-        error_log("Mailer Error: {$mail->ErrorInfo}");
+    $response = curl_exec($ch);
+    $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr  = curl_error($ch);
+    curl_close($ch);
+
+    if ($response === false || $httpCode < 200 || $httpCode >= 300) {
+        error_log('Resend Error: HTTP ' . $httpCode . ' ' . ($curlErr ?: $response));
         return false;
     }
+
+    return true;
 }
 
 /**
