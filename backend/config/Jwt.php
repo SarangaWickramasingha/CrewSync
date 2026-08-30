@@ -96,9 +96,9 @@ function setAuthCookie(string $token): void {
         'expires'  => time() + JWT_EXPIRY,   // matches token expiry (7 days)
         'path'     => '/',                    // available on all routes
         'domain'   => 'crewsync-1sis.onrender.com',                     // current domain only
-        // 'secure'   => false,                   // HTTPS only (required for SameSite=None)
-        // 'httponly' => false,                   // JS cannot access this cookie
-        // 'samesite' => 'none',                 // allows cross-origin (Next.js on diff port/domain)
+        'secure'   => true,                   // HTTPS only (required for SameSite=None)
+        'httponly' => true,                   // JS cannot access this cookie
+        'samesite' => 'None',                 // allows cross-origin (Next.js on diff port/domain)
     ]);
 }
 
