@@ -95,7 +95,7 @@ function setAuthCookie(string $token): void {
     setcookie(JWT_COOKIE_NAME, $token, [
         'expires'  => time() + JWT_EXPIRY,   // matches token expiry (7 days)
         'path'     => '/',                    // available on all routes
-        'domain'   => '',                     // current domain only
+        'domain'   => '.vercel.app',                     // current domain only
         'secure'   => false,                   // HTTPS only (required for SameSite=None)
         'httponly' => true,                   // JS cannot access this cookie
         'samesite' => 'Lax',                 // allows cross-origin (Next.js on diff port/domain)
