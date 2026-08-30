@@ -95,10 +95,10 @@ function setAuthCookie(string $token): void {
     setcookie(JWT_COOKIE_NAME, $token, [
         'expires'  => time() + JWT_EXPIRY,   // matches token expiry (7 days)
         'path'     => '/',                    // available on all routes
-        'domain'   => 'crewsync-rho.vercel.app',                     // current domain only
-        'secure'   => false,                   // HTTPS only (required for SameSite=None)
-        'httponly' => false,                   // JS cannot access this cookie
-        'samesite' => 'none',                 // allows cross-origin (Next.js on diff port/domain)
+        'domain'   => 'crewsync-1sis.onrender.com',                     // current domain only
+        // 'secure'   => false,                   // HTTPS only (required for SameSite=None)
+        // 'httponly' => false,                   // JS cannot access this cookie
+        // 'samesite' => 'none',                 // allows cross-origin (Next.js on diff port/domain)
     ]);
 }
 
