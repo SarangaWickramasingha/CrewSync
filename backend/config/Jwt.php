@@ -92,10 +92,11 @@ function verifyToken(string $token): array|false {
 // SameSite=None + Secure = required for cross-origin requests (Next.js → PHP)
 
 function setAuthCookie(string $token): void {
+    $backend_host = Env::get('BACKEND_HOST', 'http://localhost:3000');
     setcookie(JWT_COOKIE_NAME, $token, [
         'expires'  => time() + JWT_EXPIRY,   // matches token expiry (7 days)
         'path'     => '/',                    // available on all routes
-        'domain'   => 'crewsync-1sis.onrender.com',                     // current domain only
+        'domain'   => $backend_host,                     // current domain only
         'secure'   => true,                   // HTTPS only (required for SameSite=None)
         'httponly' => true,                   // JS cannot access this cookie
         'samesite' => 'None',                 // allows cross-origin (Next.js on diff port/domain)
