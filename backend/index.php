@@ -18,8 +18,6 @@ if (isset($_GET['debug'])) {
     echo json_encode(["debug_uri" => $uri, "method" => $method]);
     exit();
 }
-
-
 if ($uri === '/api/auth/login' && $method === 'POST') {
     require_once __DIR__ . '/routes/auth.php';
     login();
