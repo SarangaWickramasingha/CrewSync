@@ -46,7 +46,7 @@ All endpoints below are **relative** to the base URL. So `POST /api/auth/login` 
 | POST | `/api/tasks` | `project_id`, `task_name`, `task_budget` (opt) |
 | GET | `/api/tasks/unassigned` | — |
 | PUT | `/api/tasks/{taskId}` | any of: `task_name`, `add_cost`, `task_budget` |
-| PUT | `/api/tasks/{taskId}/toggle-finish` | — |
+| PUT | `/api/tasks/{taskId}/finish` | — (permanent — finishes the task, no unfreeze) |
 | PUT | `/api/tasks/{taskId}/daily-status` | `statuses`: `[{"date":"YYYY-MM-DD","status":"not_started"\|"in_progress"\|"done"\|"blocked"}]` |
 | DELETE | `/api/tasks/{taskId}` | — |
 

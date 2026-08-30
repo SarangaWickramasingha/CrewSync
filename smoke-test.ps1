@@ -113,7 +113,7 @@ $Endpoints = @(
     @{ m='GET';  p='/api/tasks/unassigned';     role='property_owner'; body=$null; q=$null },
     @{ m='POST'; p='/api/tasks';                role='property_owner'; body='{"project_id":"{projectId}","task_name":"Smoke Task"}'; q=$null },
     @{ m='PUT';  p='/api/tasks/{taskId}';       role='property_owner'; body='{"task_name":"Updated"}'; q=$null },
-    @{ m='PUT';  p='/api/tasks/{taskId}/toggle-finish'; role='property_owner'; body=$null; q=$null },
+    @{ m='PUT';  p='/api/tasks/{taskId}/finish'; role='property_owner'; body=$null; q=$null },
     @{ m='PUT';  p='/api/tasks/{taskId}/daily-status';  role='property_owner'; body='{"statuses":[{"date":"2026-09-01","status":"in_progress"}]}'; q=$null },
     @{ m='DELETE'; p='/api/tasks/{taskId}';     role='property_owner'; body=$null; q=$null },
 
