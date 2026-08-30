@@ -112,8 +112,8 @@ class TaskController {
         echo json_encode(["success" => true]);
     }
 
-    // ── TOGGLE FINISH ──────────────────────────────────────────────────────────
-    public function toggleFinish($taskId) {
+    // ── FINISH TASK (permanent — no unfreeze) ─────────────────────────────────
+    public function finish($taskId) {
         $user = requireRole('property_owner');
         $task = $this->getOwnedTask($taskId, $user['user_id']);
 
@@ -123,14 +123,12 @@ class TaskController {
             return;
         }
 
-        $newValue = $task['is_finished'] ? 0 : 1;
-
-        $stmt = $this->db->prepare("UPDATE tasks SET is_finished = ? WHERE task_id = ?");
-        $stmt->execute([$newValue, $taskId]);
+        $stmt = $this->db->prepare("UPDATE tasks SET is_finished = 1 WHERE task_id = ?");
+        $stmt->execute([$taskId]);
 
         echo json_encode([
             "success" => true,
-            "is_finished" => (bool) $newValue
+            "is_finished" => true
         ]);
     }
 

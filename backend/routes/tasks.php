@@ -11,9 +11,9 @@ function updateTask($taskId) {
     $controller->update($taskId);
 }
 
-function toggleTaskFinish($taskId) {
+function finishTask($taskId) {
     $controller = new TaskController();
-    $controller->toggleFinish($taskId);
+    $controller->finish($taskId);
 }
 
 function saveTaskDailyStatus($taskId) {

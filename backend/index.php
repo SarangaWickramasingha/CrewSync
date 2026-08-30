@@ -81,9 +81,9 @@ elseif (preg_match('#^/api/tasks/(\d+)$#', $uri, $matches) && $method === 'PUT')
     require_once __DIR__ . '/routes/tasks.php';
     updateTask($matches[1]);
 }
-elseif (preg_match('#^/api/tasks/(\d+)/toggle-finish$#', $uri, $matches) && $method === 'PUT') {
+elseif (preg_match('#^/api/tasks/(\d+)/finish$#', $uri, $matches) && $method === 'PUT') {
     require_once __DIR__ . '/routes/tasks.php';
-    toggleTaskFinish($matches[1]);
+    finishTask($matches[1]);
 }
 elseif (preg_match('#^/api/tasks/(\d+)/daily-status$#', $uri, $matches) && $method === 'PUT') {
     require_once __DIR__ . '/routes/tasks.php';
