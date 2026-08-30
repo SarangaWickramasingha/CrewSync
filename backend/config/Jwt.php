@@ -107,13 +107,14 @@ function setAuthCookie(string $token): void {
 // ───────────────────────── CLEAR AUTH COOKIE ───────────────────────────────────────────────────────
 // Called on logout — expires the cookie immediately
 function clearAuthCookie(): void {
+        $backend_host = Env::get('BACKEND_HOST', 'http://localhost:3000');
     setcookie(JWT_COOKIE_NAME, '', [
         'expires'  => time() - 3600,         // set in the past = browser deletes it
         'path'     => '/',
-        'domain'   => '',
-        'secure'   => false,
+        'domain'   => $backend_host,
+        'secure'   => true,
         'httponly' => true,
-        'samesite' => 'Lax',
+        'samesite' => 'None',
     ]);
 }
 /*
