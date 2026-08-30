@@ -1,6 +1,6 @@
 <?php
 
-require_once __DIR__ . '/../config/jwt.php';
+require_once __DIR__ . '/../config/Jwt.php';
 
 // ── AUTH MIDDLEWARE ───────────────────────────────────────────────────────────
 // Call requireAuth() at the top of any protected controller method
