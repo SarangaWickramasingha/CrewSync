@@ -11,7 +11,12 @@ class PdfGenerator extends FPDF {
         if ($env !== '') {
             return rtrim($env, '/') . '/';
         }
-        return 'http://localhost/CrewSync-backend/backend/reports/';
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host   = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        if (isset($_SERVER['REQUEST_URI']) && preg_match('#^(.*?/backend/)#', $_SERVER['REQUEST_URI'], $m)) {
+            return $scheme . '://' . $host . $m[1] . 'reports/';
+        }
+        return $scheme . '://' . $host . '/backend/reports/';
     }
 
     private $title = '';
@@ -216,8 +221,18 @@ class PdfGenerator extends FPDF {
 
     // ── SAVE & RETURN URL ──────────────────────────────────────────────────────
     private function outputFile($prefix) {
+        $dir = self::REPORTS_DIR;
+        if (!is_dir($dir)) {
+            if (!@mkdir($dir, 0775, true)) {
+                throw new RuntimeException('Reports directory is not writable: ' . $dir);
+            }
+        }
+        if (!is_writable($dir)) {
+            throw new RuntimeException('Reports directory is not writable: ' . $dir);
+        }
+
         $filename = $prefix . '_' . date('Ymd_His') . '.pdf';
-        $path     = self::REPORTS_DIR . $filename;
+        $path     = $dir . $filename;
         $this->Output('F', $path);
         return $this->reportsUrl() . $filename;
     }
