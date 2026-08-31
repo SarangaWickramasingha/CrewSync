@@ -1,0 +1,41 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: crewsync-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: crewsync
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+    ports:
+      - "3307:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./database/crewsync_db_final.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    container_name: crewsync-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: crewsync
+      DB_USERNAME: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      JWT_SECRET: ${JWT_SECRET:-CrewSync_JWT_S3cr3t#K9mP2qL8xZ4vN7wR1yT6!2026}
+    ports:
+      - "8080:80"
+    volumes:
+      - ./backend:/var/www/html
+
+volumes:
+  db_data:

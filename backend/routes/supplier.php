@@ -21,6 +21,11 @@ function getSupplierOrders() {
     $controller->getOrders();
 }
 
+function createSupplierOrder() {
+    $controller = new SupplierController();
+    $controller->createOrder();
+}
+
 function updateSupplierOrderStatus($orderId) {
     $controller = new SupplierController();
     $controller->updateOrderStatus($orderId);

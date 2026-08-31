@@ -4,8 +4,33 @@ require_once __DIR__ . '/fpdf19/fpdf.php';
 
 class PdfGenerator extends FPDF {
 
-    const REPORTS_DIR = 'C:/xampp/htdocs/crewsync/reports/';
-    const REPORTS_URL = 'http://127.0.0.1/crewsync/reports/';
+    const REPORTS_DIR = __DIR__ . '/../reports/';
+
+    public static function reportsDir(): string {
+        $env = Env::get('REPORTS_DIR_PATH', '');
+        return $env !== '' ? rtrim($env, '/\\') . DIRECTORY_SEPARATOR : self::REPORTS_DIR;
+    }
+
+    private function reportsUrl() {
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+
+        $explicit = Env::get('REPORTS_URL', '');
+        if ($explicit !== '') {
+            return rtrim($explicit, '/') . '/';
+        }
+
+        $host    = Env::get('BACKEND_HOST', '');
+        $reports = Env::get('REPORTS_PATH', '');
+        if ($host !== '' && $reports !== '') {
+            return $scheme . '://' . rtrim($host, '/') . '/' . trim($reports, '/') . '/';
+        }
+
+        $reqHost = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        if (isset($_SERVER['REQUEST_URI']) && preg_match('#^(.*?/backend/)#', $_SERVER['REQUEST_URI'], $m)) {
+            return $scheme . '://' . $reqHost . $m[1] . 'reports/';
+        }
+        return $scheme . '://' . $reqHost . '/reports/';
+    }
 
     private $title = '';
 
@@ -209,9 +234,19 @@ class PdfGenerator extends FPDF {
 
     // ── SAVE & RETURN URL ──────────────────────────────────────────────────────
     private function outputFile($prefix) {
+        $dir = self::reportsDir();
+        if (!is_dir($dir)) {
+            if (!@mkdir($dir, 0775, true)) {
+                throw new RuntimeException('Reports directory is not writable: ' . $dir);
+            }
+        }
+        if (!is_writable($dir)) {
+            throw new RuntimeException('Reports directory is not writable: ' . $dir);
+        }
+
         $filename = $prefix . '_' . date('Ymd_His') . '.pdf';
-        $path     = self::REPORTS_DIR . $filename;
+        $path     = $dir . $filename;
         $this->Output('F', $path);
-        return self::REPORTS_URL . $filename;
+        return $this->reportsUrl() . $filename;
     }
 }

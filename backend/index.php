@@ -18,8 +18,6 @@ if (isset($_GET['debug'])) {
     echo json_encode(["debug_uri" => $uri, "method" => $method]);
     exit();
 }
-
-
 if ($uri === '/api/auth/login' && $method === 'POST') {
     require_once __DIR__ . '/routes/auth.php';
     login();
@@ -83,9 +81,9 @@ elseif (preg_match('#^/api/tasks/(\d+)$#', $uri, $matches) && $method === 'PUT')
     require_once __DIR__ . '/routes/tasks.php';
     updateTask($matches[1]);
 }
-elseif (preg_match('#^/api/tasks/(\d+)/toggle-finish$#', $uri, $matches) && $method === 'PUT') {
+elseif (preg_match('#^/api/tasks/(\d+)/finish$#', $uri, $matches) && $method === 'PUT') {
     require_once __DIR__ . '/routes/tasks.php';
-    toggleTaskFinish($matches[1]);
+    finishTask($matches[1]);
 }
 elseif (preg_match('#^/api/tasks/(\d+)/daily-status$#', $uri, $matches) && $method === 'PUT') {
     require_once __DIR__ . '/routes/tasks.php';
@@ -304,6 +302,10 @@ elseif (preg_match('#^/api/supplier/products/(\d+)$#', $uri, $matches) && $metho
 elseif ($uri === '/api/supplier/orders' && $method === 'GET') {
     require_once __DIR__ . '/routes/supplier.php';
     getSupplierOrders();
+}
+elseif ($uri === '/api/supplier/orders' && $method === 'POST') {
+    require_once __DIR__ . '/routes/supplier.php';
+    createSupplierOrder();
 }
 elseif (preg_match('#^/api/supplier/orders/(\d+)/status$#', $uri, $matches) && $method === 'PUT') {
     require_once __DIR__ . '/routes/supplier.php';

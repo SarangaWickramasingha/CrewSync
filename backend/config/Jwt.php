@@ -90,15 +90,31 @@ function verifyToken(string $token): array|false {
 // Sends the JWT to the browser as a secure httpOnly cookie
 // httpOnly = JS cannot read it (XSS protection)
 // SameSite=None + Secure = required for cross-origin requests (Next.js → PHP)
+//
+// Local dev runs over plain http://localhost / LAN IP, where a Secure cookie
+// (or a Domain pointing at the deploy host) is rejected by the browser, so
+// those cookie attributes are only applied for non-local requests.
+
+function getRequestHost(): string {
+    $host = $_SERVER['HTTP_HOST'] ?? ($_SERVER['SERVER_NAME'] ?? '');
+    return preg_replace('/:\d+$/', '', $host); // strip any port suffix
+}
+
+function isLocalRequest(): bool {
+    $host = getRequestHost();
+    if ($host === '' || strcasecmp($host, 'localhost') === 0) return true;
+    return filter_var($host, FILTER_VALIDATE_IP) !== false; // 127.0.0.1, LAN IPs, etc.
+}
 
 function setAuthCookie(string $token): void {
+    $local = isLocalRequest();
     setcookie(JWT_COOKIE_NAME, $token, [
         'expires'  => time() + JWT_EXPIRY,   // matches token expiry (7 days)
         'path'     => '/',                    // available on all routes
-        'domain'   => '',                     // current domain only
-        'secure'   => false,                   // HTTPS only (required for SameSite=None)
-        'httponly' => true,                   // JS cannot access this cookie
-        'samesite' => 'Lax',                 // allows cross-origin (Next.js on diff port/domain)
+        'domain'   => $local ? '' : Env::get('BACKEND_HOST', ''),
+        'secure'   => !$local,               // HTTPS only (required for SameSite=None)
+        'httponly' => true,                  // JS cannot access this cookie
+        'samesite' => $local ? 'Lax' : 'None',
     ]);
 }
 
@@ -106,13 +122,14 @@ function setAuthCookie(string $token): void {
 // ───────────────────────── CLEAR AUTH COOKIE ───────────────────────────────────────────────────────
 // Called on logout — expires the cookie immediately
 function clearAuthCookie(): void {
+    $local = isLocalRequest();
     setcookie(JWT_COOKIE_NAME, '', [
         'expires'  => time() - 3600,         // set in the past = browser deletes it
         'path'     => '/',
-        'domain'   => '',
-        'secure'   => false,
+        'domain'   => $local ? '' : Env::get('BACKEND_HOST', ''),
+        'secure'   => !$local,
         'httponly' => true,
-        'samesite' => 'Lax',
+        'samesite' => $local ? 'Lax' : 'None',
     ]);
 }
 /*

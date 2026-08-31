@@ -94,13 +94,14 @@ class User {
             } elseif ($data['role'] === 'material_supplier') {
 
                     $stmt = $this->conn->prepare("
-                        INSERT INTO supplier_profiles (user_id, business_name, business_address, is_hardware_shop, is_delivery)
-                        VALUES (?, ?, ?, ?, ?)
+                        INSERT INTO supplier_profiles (user_id, business_name, business_address, city, is_hardware_shop, is_delivery)
+                        VALUES (?, ?, ?, ?, ?, ?)
                     ");
                     $stmt->execute([
                         $userId,
                         $data['business_name'],
                         $data['business_address'] ?? null,
+                        $data['city'] ?? null,
                         !empty($data['is_hardware_shop']) ? 1 : 0,
                         !empty($data['delivery']) ? 1 : 0
                     ]);

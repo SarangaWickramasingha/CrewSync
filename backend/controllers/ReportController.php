@@ -39,7 +39,7 @@ class ReportController {
     private function fileExists($filePath) {
         if (!$filePath) return false;
         $name = basename(parse_url($filePath, PHP_URL_PATH));
-        return $name !== '' && file_exists(PdfGenerator::REPORTS_DIR . $name);
+        return $name !== '' && file_exists(PdfGenerator::reportsDir() . $name);
     }
 
     // ── GENERATE A TASK REPORT ─────────────────────────────────────────────────
@@ -69,8 +69,15 @@ class ReportController {
             return;
         }
 
-        $pdf = new PdfGenerator();
-        $filePath = $pdf->taskReport($this->model->taskFacts($task));
+        try {
+            $pdf = new PdfGenerator();
+            $filePath = $pdf->taskReport($this->model->taskFacts($task));
+        } catch (Throwable $e) {
+            error_log("Report generation failed: " . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(["success" => false, "message" => "Failed to generate the report: " . $e->getMessage()]);
+            return;
+        }
 
         if ($existing) {
             $this->model->updateFile($existing['report_id'], $filePath);
@@ -123,8 +130,15 @@ class ReportController {
             return;
         }
 
-        $pdf = new PdfGenerator();
-        $filePath = $pdf->projectReport($this->model->projectFacts($project, $projectId));
+        try {
+            $pdf = new PdfGenerator();
+            $filePath = $pdf->projectReport($this->model->projectFacts($project, $projectId));
+        } catch (Throwable $e) {
+            error_log("Report generation failed: " . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(["success" => false, "message" => "Failed to generate the report: " . $e->getMessage()]);
+            return;
+        }
 
         if ($existing) {
             $this->model->updateFile($existing['report_id'], $filePath);

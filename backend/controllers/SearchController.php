@@ -16,6 +16,10 @@ class SearchController {
         $skillId  = (isset($_GET['skill_id']) && $_GET['skill_id'] !== '') ? (int) $_GET['skill_id'] : null;
         $district = trim($_GET['district'] ?? '');
         $q        = trim($_GET['q'] ?? '');
+        $minRating = (isset($_GET['min_rating']) && $_GET['min_rating'] !== '') ? (float) $_GET['min_rating'] : null;
+        $maxRating = (isset($_GET['max_rating']) && $_GET['max_rating'] !== '') ? (float) $_GET['max_rating'] : null;
+        $minPrice = (isset($_GET['min_price']) && $_GET['min_price'] !== '') ? (float) $_GET['min_price'] : null;
+        $maxPrice = (isset($_GET['max_price']) && $_GET['max_price'] !== '') ? (float) $_GET['max_price'] : null;
 
         $sql = "
             SELECT
@@ -69,8 +73,44 @@ class SearchController {
             $params[] = $like;
         }
 
-        $sql .= " GROUP BY sp.provider_id, u.fname, u.lname, u.district, sp.charge_per_day, sp.bio
-                  ORDER BY avg_rating DESC, review_count DESC";
+        if ($minPrice !== null) {
+            $sql .= " AND sp.charge_per_day >= ?";
+            $params[] = $minPrice;
+        }
+
+        if ($maxPrice !== null) {
+            $sql .= " AND sp.charge_per_day <= ?";
+            $params[] = $maxPrice;
+        }
+
+        $sql .= " GROUP BY sp.provider_id, u.fname, u.lname, u.district, sp.charge_per_day, sp.bio";
+
+        if ($minRating !== null) {
+            $sql .= " HAVING avg_rating >= ?";
+            $params[] = $minRating;
+        }
+
+        if ($maxRating !== null) {
+            if ($minRating !== null) {
+                $sql .= " AND avg_rating <= ?";
+            } else {
+                $sql .= " HAVING avg_rating <= ?";
+            }
+            $params[] = $maxRating;
+        }
+
+        $sql .= " ORDER BY avg_rating DESC, review_count DESC";
+
+        $page     = isset($_GET['page']) && $_GET['page'] !== '' ? max(1, (int) $_GET['page']) : 1;
+        $pageSize = isset($_GET['page_size']) && $_GET['page_size'] !== '' ? min(100, max(1, (int) $_GET['page_size'])) : 12;
+        $offset   = ($page - 1) * $pageSize;
+
+        $countSql = "SELECT COUNT(*) AS total FROM (" . $sql . ") AS t";
+        $stmt = $this->db->prepare($countSql);
+        $stmt->execute($params);
+        $total = (int) $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+
+        $sql .= " LIMIT " . (int) $pageSize . " OFFSET " . (int) $offset;
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -103,7 +143,16 @@ class SearchController {
             ];
         }, $rows);
 
-        echo json_encode(["success" => true, "providers" => $providers]);
+        echo json_encode([
+            "success" => true,
+            "providers" => $providers,
+            "pagination" => [
+                "page"      => $page,
+                "page_size" => $pageSize,
+                "total"     => $total,
+                "total_pages" => (int) ceil($total / $pageSize),
+            ]
+        ]);
     }
 
     // ── SEARCH MATERIALS ─────────────────────────────────────────────────────
@@ -113,6 +162,8 @@ class SearchController {
         $materialId = (isset($_GET['material_id']) && $_GET['material_id'] !== '') ? (int) $_GET['material_id'] : null;
         $district   = trim($_GET['district'] ?? '');
         $hardware   = (isset($_GET['hardware']) && $_GET['hardware'] !== '') ? (int) $_GET['hardware'] : null;
+        $minPrice   = (isset($_GET['min_price']) && $_GET['min_price'] !== '') ? (float) $_GET['min_price'] : null;
+        $maxPrice   = (isset($_GET['max_price']) && $_GET['max_price'] !== '') ? (float) $_GET['max_price'] : null;
 
         $sql = "
             SELECT
@@ -151,7 +202,28 @@ class SearchController {
             $sql .= " AND sp.is_hardware_shop = 1";
         }
 
+        if ($minPrice !== null) {
+            $sql .= " AND sm.unit_price >= ?";
+            $params[] = $minPrice;
+        }
+
+        if ($maxPrice !== null) {
+            $sql .= " AND sm.unit_price <= ?";
+            $params[] = $maxPrice;
+        }
+
         $sql .= " ORDER BY sp.avg_rating DESC, sm.id DESC";
+
+        $page     = isset($_GET['page']) && $_GET['page'] !== '' ? max(1, (int) $_GET['page']) : 1;
+        $pageSize = isset($_GET['page_size']) && $_GET['page_size'] !== '' ? min(100, max(1, (int) $_GET['page_size'])) : 12;
+        $offset   = ($page - 1) * $pageSize;
+
+        $countSql = "SELECT COUNT(*) AS total FROM (" . $sql . ") AS t";
+        $stmt = $this->db->prepare($countSql);
+        $stmt->execute($params);
+        $total = (int) $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+
+        $sql .= " LIMIT " . (int) $pageSize . " OFFSET " . (int) $offset;
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -182,7 +254,16 @@ class SearchController {
             ];
         }, $rows);
 
-        echo json_encode(["success" => true, "materials" => $materials]);
+        echo json_encode([
+            "success" => true,
+            "materials" => $materials,
+            "pagination" => [
+                "page"      => $page,
+                "page_size" => $pageSize,
+                "total"     => $total,
+                "total_pages" => (int) ceil($total / $pageSize),
+            ]
+        ]);
     }
 
 }
