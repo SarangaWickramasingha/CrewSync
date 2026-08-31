@@ -1,14 +1,14 @@
-=============================================
+`=============================================
  ISSUES FOUND DURING FINAL REPORT REVIEW
 =============================================
 
 --- 3.4 Search and Filtering Module ---
 
 MISSING FEATURES (not implemented in code):
-1. No city filter - city is collected in supplier registration UI but never
-   saved to DB or used in search. users table has no city column.
+1.~~ _No city filter - city is collected in supplier registration UI but never
+  saved to DB or used in search. users table has no city column. -done
 2. No rating filter - rating is only used for sorting (ORDER BY avg_rating DESC),
-   not for filtering. Users cannot filter by min/max rating.
+   not for filtering. Users cannot filter by min/max rating.~~- done
 3. No price range filter - charge_per_day (providers) and unit_price (materials)
    have no min/max filter. Only displayed in results.
 4. No pagination - both search endpoints return ALL matching results with no

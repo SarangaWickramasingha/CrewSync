@@ -18,6 +18,8 @@ class SearchController {
         $q        = trim($_GET['q'] ?? '');
         $minRating = (isset($_GET['min_rating']) && $_GET['min_rating'] !== '') ? (float) $_GET['min_rating'] : null;
         $maxRating = (isset($_GET['max_rating']) && $_GET['max_rating'] !== '') ? (float) $_GET['max_rating'] : null;
+        $minPrice = (isset($_GET['min_price']) && $_GET['min_price'] !== '') ? (float) $_GET['min_price'] : null;
+        $maxPrice = (isset($_GET['max_price']) && $_GET['max_price'] !== '') ? (float) $_GET['max_price'] : null;
 
         $sql = "
             SELECT
@@ -69,6 +71,16 @@ class SearchController {
             $params[] = $like;
             $params[] = $like;
             $params[] = $like;
+        }
+
+        if ($minPrice !== null) {
+            $sql .= " AND sp.charge_per_day >= ?";
+            $params[] = $minPrice;
+        }
+
+        if ($maxPrice !== null) {
+            $sql .= " AND sp.charge_per_day <= ?";
+            $params[] = $maxPrice;
         }
 
         $sql .= " GROUP BY sp.provider_id, u.fname, u.lname, u.district, sp.charge_per_day, sp.bio";
@@ -130,6 +142,8 @@ class SearchController {
         $materialId = (isset($_GET['material_id']) && $_GET['material_id'] !== '') ? (int) $_GET['material_id'] : null;
         $district   = trim($_GET['district'] ?? '');
         $hardware   = (isset($_GET['hardware']) && $_GET['hardware'] !== '') ? (int) $_GET['hardware'] : null;
+        $minPrice   = (isset($_GET['min_price']) && $_GET['min_price'] !== '') ? (float) $_GET['min_price'] : null;
+        $maxPrice   = (isset($_GET['max_price']) && $_GET['max_price'] !== '') ? (float) $_GET['max_price'] : null;
 
         $sql = "
             SELECT
@@ -166,6 +180,16 @@ class SearchController {
 
         if ($hardware) {
             $sql .= " AND sp.is_hardware_shop = 1";
+        }
+
+        if ($minPrice !== null) {
+            $sql .= " AND sm.unit_price >= ?";
+            $params[] = $minPrice;
+        }
+
+        if ($maxPrice !== null) {
+            $sql .= " AND sm.unit_price <= ?";
+            $params[] = $maxPrice;
         }
 
         $sql .= " ORDER BY sp.avg_rating DESC, sm.id DESC";
