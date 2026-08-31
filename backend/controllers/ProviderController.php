@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../middleware/auth.php';
+require_once __DIR__ . '/../helpers/notify.php';
 
 class ProviderController {
 
@@ -332,7 +333,7 @@ public function toggleAvailability() {
 
         // Confirm the request belongs to this provider and isn't expired
         $stmt = $this->db->prepare("
-            SELECT request_status, expires_at, task_id FROM service_requests
+            SELECT request_status, expires_at, task_id, owner_id FROM service_requests
             WHERE request_id = ? AND provider_id = ?
         ");
         $stmt->execute([$requestId, $providerId]);
@@ -371,7 +372,33 @@ public function toggleAvailability() {
                 $stmt->execute([$request['task_id'], $providerId]);
             }
         }
-        
+
+        // ── NOTIFY OWNER ────────────────────────────────────────────────────────
+        $ownerUserId = null;
+        $stmt = $this->db->prepare("SELECT user_id FROM property_owners WHERE owner_id = ?");
+        $stmt->execute([$request['owner_id']]);
+        $owRow = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($owRow) $ownerUserId = (int) $owRow['user_id'];
+
+        if ($ownerUserId) {
+            // Fetch task name for the message
+            $taskName = 'the task';
+            if ($request['task_id']) {
+                $stmt = $this->db->prepare("SELECT task_name FROM tasks WHERE task_id = ?");
+                $stmt->execute([$request['task_id']]);
+                $tRow = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($tRow) $taskName = $tRow['task_name'];
+            }
+            // Fetch provider name
+            $stmt = $this->db->prepare("SELECT fname, lname FROM users WHERE user_id = ?");
+            $stmt->execute([$user['user_id']]);
+            $provUser = $stmt->fetch(PDO::FETCH_ASSOC);
+            $provName = $provUser ? trim($provUser['fname'] . ' ' . $provUser['lname']) : 'A provider';
+
+            $statusLabel = $newStatus === 'accepted' ? 'accepted' : 'declined';
+            $message = "<strong>{$provName}</strong> {$statusLabel} your request for <strong>{$taskName}</strong>";
+            notify_user($this->db, $ownerUserId, 'service_request', $message);
+        }
 
         echo json_encode([
             "success" => true,

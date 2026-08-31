@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../middleware/auth.php';
+require_once __DIR__ . '/../helpers/notify.php';
 
 class ReviewController {
 
@@ -147,6 +148,23 @@ class ReviewController {
             WHERE sp.provider_id = ?
         ");
         $stmt->execute([$providerId]);
+
+        // ── NOTIFY PROVIDER ──────────────────────────────────────────────────────
+        $stmt = $this->db->prepare("SELECT user_id FROM service_providers WHERE provider_id = ?");
+        $stmt->execute([$providerId]);
+        $spRow = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($spRow) {
+            $providerUserId = (int) $spRow['user_id'];
+            // Fetch owner name
+            $stmt = $this->db->prepare("SELECT fname, lname FROM users WHERE user_id = ?");
+            $stmt->execute([$user['user_id']]);
+            $ownUser = $stmt->fetch(PDO::FETCH_ASSOC);
+            $ownerName = $ownUser ? trim($ownUser['fname'] . ' ' . $ownUser['lname']) : 'A customer';
+
+            $message = "<strong>{$ownerName}</strong> left you a {$rating}-star review";
+            notify_user($this->db, $providerUserId, 'new_review', $message);
+        }
 
         echo json_encode([
             "success"  => true,

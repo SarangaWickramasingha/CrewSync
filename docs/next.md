@@ -56,13 +56,23 @@ CRITICAL BUGS:
    - ✅ Verified end-to-end (Kamala → provider 2, avg_rating 4.20 → 4.00; review
      then visible to that provider's recent-reviews view; all cleaned back up).
 
-4. Notification creation is frontend-only (property owner side only).
-   - All event triggers originate from property owner frontend TasksContext.
-   - Backend events do NOT trigger notifications:
-     * Service request accept/reject -> no notification to owner
-     * Order status changes -> no notification to owner
-     * New reviews -> no notification to provider or owner
-     * Material orders -> no backend order is created at all
+4. Notification creation is frontend-only (property owner side only). - DONE (implemented)
+   - ✅ Added shared helper `backend/helpers/notify.php::notify_user($db,$userId,$title,$msg)`
+     that inserts a notification row for ANY user_id (works cross-user, not just auth).
+   - ✅ Backend events now create notifications for the correct recipient:
+     * Service request accept/reject (ProviderController::respondToJobRequest) -> notify owner
+       ("<Provider> accepted/declined your request for <Task>")
+     * Order status changes (SupplierController::updateOrderStatus) -> notify owner
+       ("Your order for <Material> has been accepted/declined/delivered")
+     * New reviews (ReviewController::create) -> notify provider
+       ("<Owner> left you a N-star review")
+     * Material orders (SupplierController::createOrder) -> notify supplier
+       ("<Owner> ordered <Material> × qty")
+   - ✅ Provider + supplier notification UI added: shared `NotificationsPage` component,
+     React Query hooks (`src/hooks/useNotifications.js`), pages at
+     /dashboard/serviceprovider/notifications and /dashboard/supplier/notifications,
+     and sidebar nav items with unread-count badges in app/dashboard/layout.jsx.
+   - ✅ Verified end-to-end (all 4 flows) then cleaned up test data.
 
 MODERATE ISSUES:
 5. provider_reply column queried but not in schema.

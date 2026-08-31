@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../middleware/auth.php';
+require_once __DIR__ . '/../helpers/notify.php';
 
 class SupplierController {
 
@@ -251,12 +252,43 @@ class SupplierController {
             VALUES (?, ?, ?, ?, 'pending')
         ");
         $stmt->execute([$ownerId, $supplierMaterialId, $quantity, $totalCost]);
+        $newOrderId = (int) $this->db->lastInsertId();
+
+        // ── NOTIFY SUPPLIER ──────────────────────────────────────────────────────
+        $stmt = $this->db->prepare("
+            SELECT sm.supplier_id, m.name AS material_name
+            FROM supplier_materials sm
+            JOIN materials m ON m.material_id = sm.material_id
+            WHERE sm.id = ?
+        ");
+        $stmt->execute([$supplierMaterialId]);
+        $smRow = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($smRow) {
+            $supplierUserId = null;
+            $stmt = $this->db->prepare("SELECT user_id FROM supplier_profiles WHERE supplier_id = ?");
+            $stmt->execute([$smRow['supplier_id']]);
+            $spRow = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($spRow) $supplierUserId = (int) $spRow['user_id'];
+
+            if ($supplierUserId) {
+                // Fetch owner name for the message
+                $stmt = $this->db->prepare("SELECT fname, lname FROM users WHERE user_id = ?");
+                $stmt->execute([$user['user_id']]);
+                $ownUser = $stmt->fetch(PDO::FETCH_ASSOC);
+                $ownerName = $ownUser ? trim($ownUser['fname'] . ' ' . $ownUser['lname']) : 'A customer';
+                $material = $smRow['material_name'] ?? 'material';
+
+                $message = "<strong>{$ownerName}</strong> ordered <strong>{$material}</strong> × {$quantity}";
+                notify_user($this->db, $supplierUserId, 'new_order', $message);
+            }
+        }
 
         echo json_encode([
             "success" => true,
             "message" => "Material order placed",
             "order"   => [
-                "order_id"     => (int) $this->db->lastInsertId(),
+                "order_id"     => $newOrderId,
                 "quantity"     => $quantity,
                 "total_cost"   => $totalCost,
                 "order_status" => 'pending',
@@ -300,6 +332,38 @@ class SupplierController {
 
         $stmt = $this->db->prepare("UPDATE material_orders SET order_status = ? WHERE order_id = ?");
         $stmt->execute([$newStatus, $orderId]);
+
+        // ── NOTIFY OWNER ─────────────────────────────────────────────────────────
+        $stmt = $this->db->prepare("
+            SELECT mo.owner_id,
+                   m.name AS material_name
+            FROM material_orders mo
+            JOIN supplier_materials sm ON sm.id = mo.supplier_material_id
+            JOIN materials m ON m.material_id = sm.material_id
+            WHERE mo.order_id = ?
+        ");
+        $stmt->execute([$orderId]);
+        $orderInfo = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($orderInfo) {
+            $ownerUserId = null;
+            $stmt = $this->db->prepare("SELECT user_id FROM property_owners WHERE owner_id = ?");
+            $stmt->execute([$orderInfo['owner_id']]);
+            $owRow = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($owRow) $ownerUserId = (int) $owRow['user_id'];
+
+            if ($ownerUserId) {
+                $statusLabels = [
+                    'accepted' => 'accepted',
+                    'rejected' => 'declined',
+                    'delivered' => 'delivered',
+                ];
+                $label = $statusLabels[$newStatus] ?? $newStatus;
+                $material = $orderInfo['material_name'] ?? 'your material';
+                $message = "Your order for <strong>{$material}</strong> has been <strong>{$label}</strong>";
+                notify_user($this->db, $ownerUserId, 'order_status', $message);
+            }
+        }
 
         echo json_encode(["success" => true]);
     }
