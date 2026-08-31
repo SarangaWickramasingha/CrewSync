@@ -16,6 +16,8 @@ class SearchController {
         $skillId  = (isset($_GET['skill_id']) && $_GET['skill_id'] !== '') ? (int) $_GET['skill_id'] : null;
         $district = trim($_GET['district'] ?? '');
         $q        = trim($_GET['q'] ?? '');
+        $minRating = (isset($_GET['min_rating']) && $_GET['min_rating'] !== '') ? (float) $_GET['min_rating'] : null;
+        $maxRating = (isset($_GET['max_rating']) && $_GET['max_rating'] !== '') ? (float) $_GET['max_rating'] : null;
 
         $sql = "
             SELECT
@@ -69,8 +71,23 @@ class SearchController {
             $params[] = $like;
         }
 
-        $sql .= " GROUP BY sp.provider_id, u.fname, u.lname, u.district, sp.charge_per_day, sp.bio
-                  ORDER BY avg_rating DESC, review_count DESC";
+        $sql .= " GROUP BY sp.provider_id, u.fname, u.lname, u.district, sp.charge_per_day, sp.bio";
+
+        if ($minRating !== null) {
+            $sql .= " HAVING avg_rating >= ?";
+            $params[] = $minRating;
+        }
+
+        if ($maxRating !== null) {
+            if ($minRating !== null) {
+                $sql .= " AND avg_rating <= ?";
+            } else {
+                $sql .= " HAVING avg_rating <= ?";
+            }
+            $params[] = $maxRating;
+        }
+
+        $sql .= " ORDER BY avg_rating DESC, review_count DESC";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
