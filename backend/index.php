@@ -252,6 +252,18 @@ elseif (preg_match('#^/api/review-photos/(\d+)$#', $uri, $matches) && $method ==
     require_once __DIR__ . '/routes/provider.php';
     deleteProviderReviewPhoto($matches[1]);
 }
+elseif ($uri === '/api/reviews/mine' && $method === 'GET') {
+    require_once __DIR__ . '/routes/reviews.php';
+    getMyReviews();
+}
+elseif ($uri === '/api/reviews/assigned-providers' && $method === 'GET') {
+    require_once __DIR__ . '/routes/reviews.php';
+    getAssignedReviewProviders();
+}
+elseif ($uri === '/api/reviews' && $method === 'POST') {
+    require_once __DIR__ . '/routes/reviews.php';
+    createReview();
+}
 elseif ($uri === '/api/provider/profile' && $method === 'GET') {
     require_once __DIR__ . '/routes/provider.php';
     getProviderProfile();

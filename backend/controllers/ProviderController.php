@@ -583,6 +583,19 @@ public function toggleAvailability() {
             $initials .= strtoupper($fname[1]);
         }
 
+        // Compute the live average rating directly from this provider's reviews
+        // instead of relying on the stored service_providers.avg_rating column,
+        // which is only set by seed data and never kept in sync with new reviews.
+        // This keeps the public profile consistent with search results / dashboard.
+        $liveAvgRating = 0;
+        if (!empty($reviewRows)) {
+            $total = 0;
+            foreach ($reviewRows as $rv) {
+                $total += (int) $rv['rating'];
+            }
+            $liveAvgRating = round($total / count($reviewRows), 1);
+        }
+
         echo json_encode([
             "success" => true,
             "provider" => [
@@ -592,7 +605,7 @@ public function toggleAvailability() {
                 "bio"                    => $row['bio'],
                 "experience_yr"          => (int) $row['experience_yr'],
                 "charge_per_day"         => $row['charge_per_day'] !== null ? (float) $row['charge_per_day'] : null,
-                "avg_rating"             => $row['avg_rating'] !== null ? (float) $row['avg_rating'] : 0,
+                "avg_rating"             => $liveAvgRating,
                 "is_available"           => (bool) $row['is_available'],
                 "willing_outside_region" => (bool) $row['willing_outside_region'],
                 "district"               => $row['district'],

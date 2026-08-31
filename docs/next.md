@@ -28,21 +28,33 @@ CRITICAL BUGS:
    - service_providers.avg_rating and supplier_profiles.avg_rating are only
      set by seed data in sampledata.sql.
    - SearchController computes live AVG(r.rating) from reviews table.
-   - But ProviderController::getPublicProfile() reads the stale stored column.
-   - RESULT: Public provider profile shows outdated rating while search
-     results show correct one.
+   - FIXED: ProviderController::getPublicProfile() now computes the live average
+     directly from the reviews table (same as search + dashboard), instead of
+     reading the stale stored service_providers.avg_rating column. Verified:
+     provider 1 now returns 4.7 (was 4.50), provider 3 returns 4.0 (was 4.80).
+   - NOTE: supplier_profiles.avg_rating is still seed-only. The reviews table
+     only references service_providers (provider_id FK), so there is no live
+     supplier rating source to reconcile against. Add supplier reviews + a
+     live AVG source if supplier ratings are needed.
 
-2. Property owner review submission is localStorage-only.
-   - WriteReviewModal uses a HARDCODED provider list (4 static names).
-   - handleAddReview() stores to localStorage, NOT to the database.
-   - No backend API call is made. No INSERT INTO reviews exists in PHP.
-   - Reviews are LOST on browser clear and never appear in the database.
-   - Providers only see seed-data reviews, never actual user-submitted ones.
+2. Property owner review submission is localStorage-only. - DONE (implemented)
+   - ✅ WriteReviewModal now uses a DYNAMIC provider list fetched from
+     GET /api/reviews/assigned-providers (providers assigned to the owner's
+     project tasks) instead of 4 hardcoded names.
+   - ✅ handleAddReview() now POSTs to backend (POST /api/reviews) and only
+     adds to the list on success; no longer depends on localStorage.
+   - ✅ Backend ReviewController::create() INSERTs into the reviews table.
+   - ✅ Reviews persist in the DB and providers see user-submitted ones.
+   - ✅ Owner can only review providers assigned to a task on their projects (403
+     otherwise); duplicate reviews blocked (409).
 
-3. No backend review creation endpoint exists.
-   - The entire PHP codebase has zero INSERT INTO reviews.
-   - The only review data comes from sampledata.sql seed data.
-   - The rating/review write path is fundamentally incomplete.
+3. No backend review creation endpoint exists. - DONE (implemented)
+   - ✅ POST /api/reviews (ReviewController::create) — property_owner role.
+   - ✅ GET /api/reviews/mine — owner's own submitted reviews.
+   - ✅ GET /api/reviews/assigned-providers — providers assigned to owner's tasks.
+   - ✅ service_providers.avg_rating recomputed and persisted after each insert.
+   - ✅ Verified end-to-end (Kamala → provider 2, avg_rating 4.20 → 4.00; review
+     then visible to that provider's recent-reviews view; all cleaned back up).
 
 4. Notification creation is frontend-only (property owner side only).
    - All event triggers originate from property owner frontend TasksContext.
