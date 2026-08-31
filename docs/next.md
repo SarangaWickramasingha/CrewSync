@@ -10,7 +10,7 @@ MISSING FEATURES (not implemented in code):
 2. No rating filter - rating is only used for sorting (ORDER BY avg_rating DESC),
    not for filtering. Users cannot filter by min/max rating.~~- done
 3. No price range filter - charge_per_day (providers) and unit_price (materials)
-   have no min/max filter. Only displayed in results.
+   have no min/max filter. Only displayed in results.-done
 4. No pagination - both search endpoints return ALL matching results with no
    LIMIT/OFFSET. No server-side pagination exists.
 5. No sorting options - sorting is hardcoded by avg_rating DESC. Users cannot

@@ -101,6 +101,17 @@ class SearchController {
 
         $sql .= " ORDER BY avg_rating DESC, review_count DESC";
 
+        $page     = isset($_GET['page']) && $_GET['page'] !== '' ? max(1, (int) $_GET['page']) : 1;
+        $pageSize = isset($_GET['page_size']) && $_GET['page_size'] !== '' ? min(100, max(1, (int) $_GET['page_size'])) : 12;
+        $offset   = ($page - 1) * $pageSize;
+
+        $countSql = "SELECT COUNT(*) AS total FROM (" . $sql . ") AS t";
+        $stmt = $this->db->prepare($countSql);
+        $stmt->execute($params);
+        $total = (int) $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+
+        $sql .= " LIMIT " . (int) $pageSize . " OFFSET " . (int) $offset;
+
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -132,7 +143,16 @@ class SearchController {
             ];
         }, $rows);
 
-        echo json_encode(["success" => true, "providers" => $providers]);
+        echo json_encode([
+            "success" => true,
+            "providers" => $providers,
+            "pagination" => [
+                "page"      => $page,
+                "page_size" => $pageSize,
+                "total"     => $total,
+                "total_pages" => (int) ceil($total / $pageSize),
+            ]
+        ]);
     }
 
     // ── SEARCH MATERIALS ─────────────────────────────────────────────────────
@@ -194,6 +214,17 @@ class SearchController {
 
         $sql .= " ORDER BY sp.avg_rating DESC, sm.id DESC";
 
+        $page     = isset($_GET['page']) && $_GET['page'] !== '' ? max(1, (int) $_GET['page']) : 1;
+        $pageSize = isset($_GET['page_size']) && $_GET['page_size'] !== '' ? min(100, max(1, (int) $_GET['page_size'])) : 12;
+        $offset   = ($page - 1) * $pageSize;
+
+        $countSql = "SELECT COUNT(*) AS total FROM (" . $sql . ") AS t";
+        $stmt = $this->db->prepare($countSql);
+        $stmt->execute($params);
+        $total = (int) $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+
+        $sql .= " LIMIT " . (int) $pageSize . " OFFSET " . (int) $offset;
+
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -223,7 +254,16 @@ class SearchController {
             ];
         }, $rows);
 
-        echo json_encode(["success" => true, "materials" => $materials]);
+        echo json_encode([
+            "success" => true,
+            "materials" => $materials,
+            "pagination" => [
+                "page"      => $page,
+                "page_size" => $pageSize,
+                "total"     => $total,
+                "total_pages" => (int) ceil($total / $pageSize),
+            ]
+        ]);
     }
 
 }
