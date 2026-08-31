@@ -229,7 +229,7 @@ class SupplierController {
         $userInfo = $stmt->fetch(PDO::FETCH_ASSOC);
 
         // Get supplier profile
-        $stmt = $this->db->prepare("SELECT business_name, business_address, is_hardware_shop FROM supplier_profiles WHERE supplier_id = ?");
+        $stmt = $this->db->prepare("SELECT business_name, business_address, city, is_hardware_shop FROM supplier_profiles WHERE supplier_id = ?");
         $stmt->execute([$supplierId]);
         $supplierInfo = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -253,6 +253,7 @@ class SupplierController {
                 "business" => [
                     "businessName"    => $supplierInfo['business_name'] ?? '',
                     "businessAddress" => $supplierInfo['business_address'] ?? '',
+                    "city"            => $supplierInfo['city'] ?? '',
                 ],
                 "hasHardware" => (bool) ($supplierInfo['is_hardware_shop'] ?? false),
                 "hardware" => $hardwareStore ? [
@@ -300,9 +301,10 @@ class SupplierController {
             elseif ($section === 'business') {
                 $bizName = trim($payload['businessName'] ?? '');
                 $bizAddress = trim($payload['businessAddress'] ?? '');
+                $city = trim($payload['city'] ?? '');
 
-                $stmt = $this->db->prepare("UPDATE supplier_profiles SET business_name = ?, business_address = ? WHERE supplier_id = ?");
-                $stmt->execute([$bizName, $bizAddress, $supplierId]);
+                $stmt = $this->db->prepare("UPDATE supplier_profiles SET business_name = ?, business_address = ?, city = ? WHERE supplier_id = ?");
+                $stmt->execute([$bizName, $bizAddress, $city, $supplierId]);
             }
             elseif ($section === 'hardware') {
                 $hasHardware = $payload['hasHardware'] ?? null;

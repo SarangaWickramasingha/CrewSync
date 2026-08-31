@@ -65,6 +65,7 @@
         user_id          INT NOT NULL UNIQUE,
         business_name    VARCHAR(200),
         business_address TEXT,
+        city             VARCHAR(100),
         is_hardware_shop BOOLEAN DEFAULT FALSE,
         avg_rating       DECIMAL(3,2) DEFAULT 0.00,
         CONSTRAINT fk_sup_user FOREIGN KEY (user_id)
