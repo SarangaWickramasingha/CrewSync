@@ -172,6 +172,98 @@ class SupplierController {
         echo json_encode(["success" => true, "orders" => $orders]);
     }
 
+    // ── CREATE MATERIAL ORDER (property owner requests a material) ────────────────
+    // Body: { "supplier_material_id": 12, "quantity": 5 }
+    // Authenticates as a property owner, resolves their owner_id from the token,
+    // validates the supplier material, computes total_cost and inserts a 'pending'
+    // order that the supplier can see in their Orders page.
+    public function createOrder() {
+        $user = requireRole('property_owner');
+
+        $stmt = $this->db->prepare("SELECT owner_id FROM property_owners WHERE user_id = ?");
+        $stmt->execute([$user['user_id']]);
+        $owner = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$owner) {
+            http_response_code(403);
+            echo json_encode(["success" => false, "message" => "Property owner profile not found"]);
+            return;
+        }
+
+        $ownerId = $owner['owner_id'];
+        $data    = json_decode(file_get_contents("php://input"), true) ?? [];
+
+        $supplierMaterialId = intval($data['supplier_material_id'] ?? 0);
+        $quantity           = intval($data['quantity'] ?? 0);
+
+        if (!$supplierMaterialId || $quantity <= 0) {
+            http_response_code(400);
+            echo json_encode(["success" => false, "message" => "supplier_material_id and quantity are required"]);
+            return;
+        }
+
+        // Validate the supplier material exists and is available
+        $stmt = $this->db->prepare("
+            SELECT sm.id, sm.unit_price, sm.stock_qty, sm.is_available
+            FROM supplier_materials sm
+            WHERE sm.id = ?
+        ");
+        $stmt->execute([$supplierMaterialId]);
+        $material = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$material) {
+            http_response_code(404);
+            echo json_encode(["success" => false, "message" => "Supplier material not found"]);
+            return;
+        }
+
+        if (!$material['is_available']) {
+            http_response_code(400);
+            echo json_encode(["success" => false, "message" => "This material is currently unavailable"]);
+            return;
+        }
+
+        if ($quantity > (int) $material['stock_qty']) {
+            http_response_code(400);
+            echo json_encode([
+                "success" => false,
+                "message" => "Requested quantity exceeds available stock (" . (int) $material['stock_qty'] . ")",
+            ]);
+            return;
+        }
+
+        // Guard against duplicate pending requests from the same owner for the same material
+        $stmt = $this->db->prepare("
+            SELECT order_id FROM material_orders
+            WHERE owner_id = ? AND supplier_material_id = ? AND order_status = 'pending'
+        ");
+        $stmt->execute([$ownerId, $supplierMaterialId]);
+        if ($stmt->fetch(PDO::FETCH_ASSOC)) {
+            http_response_code(409);
+            echo json_encode(["success" => false, "message" => "A pending order already exists for this material"]);
+            return;
+        }
+
+        $totalCost = round((float) $material['unit_price'] * $quantity, 2);
+
+        $stmt = $this->db->prepare("
+            INSERT INTO material_orders (owner_id, supplier_material_id, quantity, total_cost, order_status)
+            VALUES (?, ?, ?, ?, 'pending')
+        ");
+        $stmt->execute([$ownerId, $supplierMaterialId, $quantity, $totalCost]);
+
+        echo json_encode([
+            "success" => true,
+            "message" => "Material order placed",
+            "order"   => [
+                "order_id"     => (int) $this->db->lastInsertId(),
+                "quantity"     => $quantity,
+                "total_cost"   => $totalCost,
+                "order_status" => 'pending',
+            ],
+        ]);
+    }
+
     // ── UPDATE ORDER STATUS (accept / reject / delivered) ─────────────────────────
     public function updateOrderStatus($orderId) {
         $user = requireRole('material_supplier');

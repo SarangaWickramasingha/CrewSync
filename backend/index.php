@@ -303,6 +303,10 @@ elseif ($uri === '/api/supplier/orders' && $method === 'GET') {
     require_once __DIR__ . '/routes/supplier.php';
     getSupplierOrders();
 }
+elseif ($uri === '/api/supplier/orders' && $method === 'POST') {
+    require_once __DIR__ . '/routes/supplier.php';
+    createSupplierOrder();
+}
 elseif (preg_match('#^/api/supplier/orders/(\d+)/status$#', $uri, $matches) && $method === 'PUT') {
     require_once __DIR__ . '/routes/supplier.php';
     updateSupplierOrderStatus($matches[1]);

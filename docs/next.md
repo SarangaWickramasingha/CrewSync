@@ -12,8 +12,8 @@ MISSING FEATURES (not implemented in code):
 3. No price range filter - charge_per_day (providers) and unit_price (materials)
    have no min/max filter. Only displayed in results.-done
 4. No pagination - both search endpoints return ALL matching results with no
-   LIMIT/OFFSET. No server-side pagination exists.
-5. No sorting options - sorting is hardcoded by avg_rating DESC. Users cannot
+   LIMIT/OFFSET. No server-side pagination exists.-done
+5. No sorting options - sorting is hardcoded by avg_rating DESC. Users cannot 
    choose to sort by price, name, or distance.
 6. No full-text search index - provider text search uses LIKE %term% which is
    slow on large datasets and cannot use indexes. MySQL FULLTEXT indexes
@@ -89,21 +89,20 @@ SECURITY:
 
 --- 3.3 Service and Material Booking Module ---
 
-CRITICAL:
-1. Material ordering is NOT fully implemented.
-   - RequestMaterialModal only creates a local notification.
-   - No POST /api/material-orders endpoint exists in backend.
-   - SupplierController has getOrders() and updateOrderStatus() but NO
-     createOrder() method.
-   - Supplier Orders page will always be empty unless data is manually
-     inserted into the material_orders table.
+IMPLEMENTED:
+1. Material ordering is now fully implemented.
+   - POST /api/supplier/orders → SupplierController::createOrder() creates a
+     pending order (owner role, resolves owner_id, validates supplier_material_id,
+     checks stock & duplicate pending order, computes total_cost = unit_price × qty).
+   - RequestMaterialModal now calls the backend API and only shows "Request Sent"
+     on success; errors (over-stock, duplicate, unavailable) are displayed inline.
+   - Resulting orders appear in the Supplier Orders page via getOrders().
+   ✅ Verified end-to-end (created order #ORD-004, visible to supplier, then cleaned up).
 
-2. Material request modal sends misleading "Your request has been sent"
-   notification but no request is actually sent to the backend.
-
-MEDIUM:
+REMAINING / MEDIUM:
 3. Property owners have no "My Requests" page to see status of sent
-   service requests (accepted/rejected/expired).
+   material/service requests (accepted/rejected/expired). Owners receive a local
+   notification when the order is placed, but there is no owner-facing status UI.
 4. Service request auto-expiration (72 hours) not mentioned in report.
 
 --- 3.6 Documentation and Reporting Module ---
