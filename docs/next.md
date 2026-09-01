@@ -78,7 +78,7 @@ MODERATE ISSUES:
 5. provider_reply column queried but not in schema.
    - ProviderController::getAllReviews() runs SHOW COLUMNS to check for
      provider_reply, but it is NOT in crewsync_db_final.sql schema.
-   - Will always be false unless manually added to the database.
+   - Will always be false unless manually added to the database.✅ done no needed
 
 6. Admin Reviews tab is a dead stub.
    - src/components/admin/admin-tabs/Reviews.jsx returns hardcoded [].
@@ -157,7 +157,7 @@ INACCURATE/EXAGGERATED CLAIMS:
    same API call, same PDF output).
 
 MISSING FEATURES:
-6. No CSV or Excel export functionality.
+6. No CSV or Excel export functionality.- no needed.
 7. No print functionality (no window.print, no print-friendly CSS).
 8. No financial/expense report type.
 9. No "general" report type (was in original schema ENUM but removed).

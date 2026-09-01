@@ -493,29 +493,13 @@ public function toggleAvailability() {
             return;
         }
 
-        try {
-            $hasReply = $this->db->query("SHOW COLUMNS FROM reviews LIKE 'provider_reply'")->fetch();
-        } catch (PDOException $e) {
-            $hasReply = false;
-        }
-
-        if ($hasReply) {
-            $sql = "SELECT r.review_id, r.rating, r.comment, r.review_date, r.provider_reply,
-                           u.fname, u.lname
-                    FROM reviews r
-                    JOIN property_owners po ON po.owner_id = r.owner_id
-                    JOIN users u ON u.user_id = po.user_id
-                    WHERE r.provider_id = ?
-                    ORDER BY r.review_date DESC";
-        } else {
-            $sql = "SELECT r.review_id, r.rating, r.comment, r.review_date,
-                           u.fname, u.lname
-                    FROM reviews r
-                    JOIN property_owners po ON po.owner_id = r.owner_id
-                    JOIN users u ON u.user_id = po.user_id
-                    WHERE r.provider_id = ?
-                    ORDER BY r.review_date DESC";
-        }
+        $sql = "SELECT r.review_id, r.rating, r.comment, r.review_date,
+                       u.fname, u.lname
+                FROM reviews r
+                JOIN property_owners po ON po.owner_id = r.owner_id
+                JOIN users u ON u.user_id = po.user_id
+                WHERE r.provider_id = ?
+                ORDER BY r.review_date DESC";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$provider['provider_id']]);
@@ -533,7 +517,6 @@ public function toggleAvailability() {
                 "stars"    => (int) $r['rating'],
                 "date"     => date('F j, Y', strtotime($r['review_date'])),
                 "text"     => $r['comment'],
-                "reply"    => $r['provider_reply'] ?? null,
                 "photos"   => array_map(fn($p) => [
                     "photo_id" => $p['photo_id'],
                     "url"      => $this->getUploadsBaseUrl() . $p['file_path'],
