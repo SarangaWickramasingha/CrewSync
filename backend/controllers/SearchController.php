@@ -157,13 +157,15 @@ class SearchController {
 
     // ── SEARCH MATERIALS ─────────────────────────────────────────────────────
     // Public endpoint — property owners can browse available supplier materials.
-    // Accepts optional query params: material_id, district, hardware (1/0)
+    // Accepts optional query params: material_id, district, hardware (1/0),
+    // q (free-text search on material name / description / supplier name)
     public function searchMaterials() {
         $materialId = (isset($_GET['material_id']) && $_GET['material_id'] !== '') ? (int) $_GET['material_id'] : null;
         $district   = trim($_GET['district'] ?? '');
         $hardware   = (isset($_GET['hardware']) && $_GET['hardware'] !== '') ? (int) $_GET['hardware'] : null;
         $minPrice   = (isset($_GET['min_price']) && $_GET['min_price'] !== '') ? (float) $_GET['min_price'] : null;
         $maxPrice   = (isset($_GET['max_price']) && $_GET['max_price'] !== '') ? (float) $_GET['max_price'] : null;
+        $q          = trim($_GET['q'] ?? '');
 
         $sql = "
             SELECT
@@ -210,6 +212,14 @@ class SearchController {
         if ($maxPrice !== null) {
             $sql .= " AND sm.unit_price <= ?";
             $params[] = $maxPrice;
+        }
+
+        if ($q !== '') {
+            $sql .= " AND (m.name LIKE ? OR sm.description LIKE ? OR sp.business_name LIKE ?)";
+            $like = '%' . $q . '%';
+            $params[] = $like;
+            $params[] = $like;
+            $params[] = $like;
         }
 
         $sql .= " ORDER BY sp.avg_rating DESC, sm.id DESC";

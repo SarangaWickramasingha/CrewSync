@@ -6,20 +6,26 @@
 
 MISSING FEATURES (not implemented in code):
 1.~~ _No city filter - city is collected in supplier registration UI but never
-  saved to DB or used in search. users table has no city column. -done
+  saved to DB or used in search. users table has no city column. -✅done
 2. No rating filter - rating is only used for sorting (ORDER BY avg_rating DESC),
-   not for filtering. Users cannot filter by min/max rating.~~- done
+   not for filtering. Users cannot filter by min/max rating.~~- ✅done
 3. No price range filter - charge_per_day (providers) and unit_price (materials)
-   have no min/max filter. Only displayed in results.-done
+   have no min/max filter. Only displayed in results.-✅done
 4. No pagination - both search endpoints return ALL matching results with no
-   LIMIT/OFFSET. No server-side pagination exists.-done
+   LIMIT/OFFSET. No server-side pagination exists.-✅done
 5. No sorting options - sorting is hardcoded by avg_rating DESC. Users cannot 
    choose to sort by price, name, or distance.
 6. No full-text search index - provider text search uses LIKE %term% which is
    slow on large datasets and cannot use indexes. MySQL FULLTEXT indexes
    are not used.
 7. No free-text search for materials - service provider search has a q parameter
-   for text search by name/skill. Materials search has no equivalent.
+   for text search by name/skill. Materials search has no equivalent. ✅ DONE
+   - backend/controllers/SearchController.php::searchMaterials() now accepts a
+     q param and filters on material name (m.name), description
+     (sm.description), and supplier business name (sp.business_name) via LIKE.
+   - Frontend app/dashboard/propertyowner/materials/page.jsx now has a free-text
+     "Search" input (searches by material/supplier/keyword) that sends q and is
+     part of the applied filters. Pagination still works with the search.
 
 --- 3.5 Ratings, Reviews, and Notifications Module ---
 
@@ -121,9 +127,16 @@ MODERATE ISSUES:
      "<Weekday, time>" for the last 7 days, and "<Mon d, Y time>" for
      anything older.
 
-9. No notification system for service providers or material suppliers.
-   - Provider sidebar and supplier sidebar have no Notifications link.
-   - Only property owners have a notifications page.
+9. No notification system for service providers or material suppliers. ✅ DONE
+   - Provider sidebar and supplier sidebar had no Notifications link.
+   - Only property owners had a notifications page.
+   - Fix already shipped (verified): provider + supplier notification UI added —
+     shared NotificationsPage component, React Query hooks
+     (src/hooks/useNotifications.js), pages at
+     /dashboard/serviceprovider/notifications and
+     /dashboard/supplier/notifications, and sidebar "Notifications" nav items
+     with unread-count badges in app/dashboard/layout.jsx (provider line 46,
+     supplier line 63). Both pages exist in the frontend.
 
 10. Reviews only visible to providers from seed data.
     - Provider reviews page queries reviews table (seed data only).
@@ -203,13 +216,18 @@ NOTES:
 FABRICATED COMPONENT NAMES (all 3 cited examples DO NOT EXIST):
 1. "TaskTimelineCard" - DOES NOT EXIST anywhere in codebase.
    Actual component: ProjectTimelineCard
-   (src/components/serviceProvider/ProjectTimelineCard.jsx)
+   (src/components/serviceProvider/ProjectTimelineCard.jsx)- No change needed for this
 
-2. "ProviderProfile" - DOES NOT EXIST as a reusable component.
-   Actual: ServiceProviderProfilePage (a PAGE, not a component)
-   (app/dashboard/serviceprovider/profile/page.jsx)
-   Also: ServiceProviderCard (a card component)
-   (src/components/propertyOwner/ServiceProviderCard.jsx)
+2. "ProviderProfile" - DOES NOT EXIST as a reusable component. ✅
+   - Actual: ServiceProviderProfilePage (a PAGE, not a component)
+     (app/dashboard/serviceprovider/profile/page.jsx) - the service
+     provider's own "My Profile" editor (personal info + skills). Not a card.
+   - Also: ServiceProviderCard (a reusable card component)
+     (src/components/propertyOwner/ServiceProviderCard.jsx)
+   - FINDING: ServiceProviderCard is used ONLY by the PROPERTY OWNER on the
+     "Find Service Providers" page (app/dashboard/propertyowner/services/page.jsx)
+     to showcase/browse providers for hiring. It is NOT used on the service
+     provider's own profile page. No code change needed - both already exist.
 
 3. "BookingModal" - DOES NOT EXIST anywhere in codebase.
    Actual component: RequestServiceModal
