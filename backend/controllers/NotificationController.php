@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../helpers/clean.php';
 require_once __DIR__ . '/../middleware/auth.php';
 
 class NotificationController {
@@ -24,6 +25,7 @@ class NotificationController {
 
         // Convert SQL datetime to a reader-friendly relative format
         foreach ($rows as &$row) {
+            $row['text'] = sanitize_notification_html($row['text']);
             $row['read'] = (bool)$row['read'];
             $timestamp = strtotime($row['time']);
             $time = date("g:i A", $timestamp);
@@ -65,7 +67,7 @@ class NotificationController {
             INSERT INTO notifications (user_id, title, message, is_read) 
             VALUES (?, ?, ?, 0)
         ");
-        $stmt->execute([$user['user_id'], $type, $message]);
+        $stmt->execute([$user['user_id'], $type, sanitize_notification_html($message)]);
 
         echo json_encode(["success" => true, "notif_id" => $this->db->lastInsertId()]);
     }

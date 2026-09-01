@@ -138,16 +138,48 @@ MODERATE ISSUES:
      with unread-count badges in app/dashboard/layout.jsx (provider line 46,
      supplier line 63). Both pages exist in the frontend.
 
-10. Reviews only visible to providers from seed data.
-    - Provider reviews page queries reviews table (seed data only).
-    - Property owner writes reviews to localStorage (never to DB).
-    - These two systems are completely disconnected.
+10. Reviews only visible to providers from seed data. 
+✅ DONE (already resolved)
+    - Property owner reviews are DB-backed, NOT localStorage: the owner page
+      (app/dashboard/propertyowner/reviews/page.jsx) calls reviewApi.createReview()
+      -> POST /api/reviews -> ReviewController::create() -> INSERT INTO reviews
+      (backend/controllers/ReviewController.php). WriteReviewModal.jsx is a pure
+      form; no localStorage on the owner side.
+    - Provider reviews read the SAME table: app/dashboard/serviceprovider/reviews/page.jsx
+      uses useAllReviews() -> GET /api/provider/reviews/all -> ProviderController::getAllReviews()
+      which reads the reviews table (not seed-only).
+    - The two systems are connected: ReviewController::create() recomputes
+      service_providers.avg_rating and notifies the provider (notify_user 'new_review').
+      Admin can also list/delete reviews. Full round-trip verified.
+    - Remaining localStorage on the provider reviews page is only for the photo
+      staging cache (crewsync_provider_review_photos) and a UI-only "reported"
+      badge (crewsync_reported_reviews); the report itself posts to the backend.
+      No review content is ever stored locally.
 
 SECURITY:
-11. XSS vulnerability in notifications page.
-    - page.jsx uses dangerouslySetInnerHTML to render notification messages.
+11. XSS vulnerability in notifications page. ✅ DONE
+    - page.jsx used dangerouslySetInnerHTML to render notification messages.
     - Notification text contains HTML (strong tags, anchor tags).
-    - Backend stores HTML as-is in the message TEXT column.
+    - Backend stored HTML as-is in the message TEXT column.
+    - Fix:
+      * New whitelist sanitizer backend/helpers/clean.php -> sanitize_notification_html().
+        Allows only <strong>/<b>/<em>/<i>/<u>/<span>/<a>/<br>; strips scripts,
+        iframes/style/form/template blocks, on* handlers, and all attributes except
+        a safe href (relative /, http(s) only; javascript:/data:/vbscript: -> href="#"
+        or link dropped to plain text). Rebuilds each <a>pair keeping only href with
+        target="_blank" rel="noopener noreferrer".
+      * Applied at WRITE time: notify_user() (helpers/notify.php) and
+        NotificationController::createNotification() — user-controlled text (e.g. task
+        names) can no longer store dangerous markup.
+      * Applied at READ time: NotificationController::getNotifications() sanitizes every
+        returned message, covering legacy rows already in the DB.
+      * Frontend no longer uses dangerouslySetInnerHTML: new
+        src/components/notifications/NotificationText.jsx renders through a strict
+        allow-list (DOMParser -> React elements, text auto-escaped, href validated),
+        used by both app/dashboard/propertyowner/notifications/page.jsx and
+        src/components/notifications/NotificationsPage.jsx.
+    - Verified with php -l + sanitizer payload tests (script, iframe, svg, onerror,
+      javascript:/data: hrefs, comments); eslint clean on changed files.
 
 --- 3.3 Service and Material Booking Module ---
 
