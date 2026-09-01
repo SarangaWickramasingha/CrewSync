@@ -22,11 +22,26 @@ class NotificationController {
         $stmt->execute([$user['user_id']]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Convert SQL datetime to a reader-friendly format
+        // Convert SQL datetime to a reader-friendly relative format
         foreach ($rows as &$row) {
             $row['read'] = (bool)$row['read'];
             $timestamp = strtotime($row['time']);
-            $row['time'] = "Today, " . date("g:i A", $timestamp); // Custom simplified time format
+            $time = date("g:i A", $timestamp);
+
+            $now = time();
+            $diffDays = (int) floor(($now - $timestamp) / 86400);
+            $sameDay = date('Y-m-d', $timestamp) === date('Y-m-d', $now);
+            $yesterday = date('Y-m-d', $timestamp) === date('Y-m-d', $now - 86400);
+
+            if ($sameDay) {
+                $row['time'] = "Today, " . $time;
+            } elseif ($yesterday) {
+                $row['time'] = "Yesterday, " . $time;
+            } elseif ($diffDays < 7) {
+                $row['time'] = date('l, g:i A', $timestamp);
+            } else {
+                $row['time'] = date('M j, Y g:i A', $timestamp);
+            }
         }
 
         echo json_encode(["success" => true, "notifications" => $rows]);

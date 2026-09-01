@@ -28,7 +28,7 @@ CRITICAL BUGS:
    - service_providers.avg_rating and supplier_profiles.avg_rating are only
      set by seed data in sampledata.sql.
    - SearchController computes live AVG(r.rating) from reviews table.
-   - FIXED: ProviderController::getPublicProfile() now computes the live average
+   - ✅FIXED: ProviderController::getPublicProfile() now computes the live average
      directly from the reviews table (same as search + dashboard), instead of
      reading the stale stored service_providers.avg_rating column. Verified:
      provider 1 now returns 4.7 (was 4.50), provider 3 returns 4.0 (was 4.80).
@@ -75,24 +75,51 @@ CRITICAL BUGS:
    - ✅ Verified end-to-end (all 4 flows) then cleaned up test data.
 
 MODERATE ISSUES:
-5. provider_reply column queried but not in schema.
-   - ProviderController::getAllReviews() runs SHOW COLUMNS to check for
-     provider_reply, but it is NOT in crewsync_db_final.sql schema.
-   - Will always be false unless manually added to the database.✅ done no needed
+5. provider_reply column queried but not in schema. ✅ DONE
+   - ProviderController::getAllReviews() ran SHOW COLUMNS to check for
+     provider_reply, but the column does NOT exist in crewsync_db_final.sql.
+   - Removed all provider_reply handling from
+     backend/controllers/ProviderController.php (the SHOW COLUMNS branch,
+     the conditional SQL, and the "reply" output key) and dropped the
+     "reply" field that was returned to the frontend (no frontend
+     references existed).
 
-6. Admin Reviews tab is a dead stub.
-   - src/components/admin/admin-tabs/Reviews.jsx returns hardcoded [].
-   - Has a TODO comment. The actual admin reviews page works via a
-     different route (app/dashboard/admin/reviews/page.jsx).
+6. Admin Reviews tab is a dead stub. ✅ DONE
+   - src/components/admin/admin-tabs/Reviews.jsx returned hardcoded [] with
+     a TODO comment. The real admin reviews page works via
+     app/dashboard/admin/reviews/page.jsx (backed by useAdminReviews /
+     useDeleteAdminReview in src/hooks/admin/useAdmin.js).
+   - Deleted the entire orphaned legacy admin tree that was never mounted:
+     src/components/admin/AdminDashboard.jsx and the whole
+     src/components/admin/admin-tabs/ dir (Reviews/Overview/Users/
+     Providers/Feedback).
+   - Kept the shared utilities still used by live routes:
+     Pagination.jsx, AdminSearchBar.jsx, ConfirmHandledModal.jsx,
+     DeleteConfirmModal.jsx. No functional change needed — the actual
+     admin reviews feature already worked via /dashboard/admin/reviews.
 
 7. RequestServiceModal triggers notification locally but does not reflect
    backend response. Notification says "Request sent to..." but is a
-   side-effect of context update, not from the backend.
+   side-effect of context update, not from the backend. ✅ DONE
+   - backend/controllers/ServiceRequestController.php::create() now creates
+     real notifications (via helpers/notify.php notify_user()): one for the
+     provider ("<owner> sent you a service request for <tasks>") and one for
+     the owner ("Request sent to <provider> for <tasks>"), persisted in the
+     DB with the passed notification_id returned in the response.
+   - TasksContext.jsx exposes refreshNotifications() which reloads the
+     owner's notifications from the backend.
+   - RequestServiceModal.jsx calls refreshNotifications() after a successful
+     createServiceRequest() so the backend-created confirmation notification
+     appears on the owner's notifications page.
+   - The provider's dashboard picks up its backend notification via the
+     existing useNotifications() React Query hook.
 
-8. Notification time formatting is broken.
-   - NotificationController::getNotifications() hardcodes "Today," prefix
+8. Notification time formatting is broken. ✅ DONE
+   - NotificationController::getNotifications() hardcoded "Today," prefix
      regardless of when the notification was created.
-   - Yesterday's or last week's notifications all display "Today, ...".
+   - Now uses a relative format: "Today, <time>", "Yesterday, <time>",
+     "<Weekday, time>" for the last 7 days, and "<Mon d, Y time>" for
+     anything older.
 
 9. No notification system for service providers or material suppliers.
    - Provider sidebar and supplier sidebar have no Notifications link.

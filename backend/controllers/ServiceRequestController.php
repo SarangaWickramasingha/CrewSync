@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../middleware/auth.php';
+require_once __DIR__ . '/../helpers/notify.php';
 
 class ServiceRequestController {
 
@@ -113,10 +114,52 @@ class ServiceRequestController {
             return;
         }
 
+        // ── NOTIFICATIONS (created by the backend, not a frontend side-effect) ──
+        // Get the task names that were actually requested.
+        $requestedTaskIds = array_column($created, 'task_id');
+        $in = implode(',', array_fill(0, count($requestedTaskIds), '?'));
+        $stmt = $this->db->prepare("SELECT task_id, task_name FROM tasks WHERE task_id IN ($in)");
+        $stmt->execute($requestedTaskIds);
+        $taskNames = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $nameList = implode(', ', array_column($taskNames, 'task_name'));
+
+        // Owner display name + user_id (the authenticated property owner)
+        $ownerUserId = (int) $user['user_id'];
+        $ownerName = trim(($user['fname'] ?? '') . ' ' . ($user['lname'] ?? ''));
+        if ($ownerName === '') $ownerName = 'Property owner';
+
+        // Provider user_id + display name
+        $providerUserId = null;
+        $providerName = 'Service provider';
+        $stmt = $this->db->prepare("
+            SELECT u.user_id, u.fname, u.lname
+            FROM service_providers sp
+            JOIN users u ON u.user_id = sp.user_id
+            WHERE sp.provider_id = ?
+        ");
+        $stmt->execute([$providerId]);
+        $provRow = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($provRow) {
+            $providerUserId = (int) $provRow['user_id'];
+            $pn = trim(($provRow['fname'] ?? '') . ' ' . ($provRow['lname'] ?? ''));
+            if ($pn !== '') $providerName = $pn;
+        }
+
+        // Notify the provider that they have a new service request
+        if ($providerUserId) {
+            $pmsg = "<strong>{$ownerName}</strong> sent you a service request for <strong>{$nameList}</strong>";
+            notify_user($this->db, $providerUserId, 'service_request', $pmsg);
+        }
+
+        // Notify the owner confirming the request was sent (persisted by the backend)
+        $omsg = "Request sent to <strong>{$providerName}</strong> for <strong>{$nameList}</strong>";
+        $ownerNotifId = notify_user($this->db, $ownerUserId, 'service_request', $omsg);
+
         echo json_encode([
             "success"  => true,
             "message"  => count($created) . " request(s) sent",
             "requests" => $created,
+            "notification_id" => $ownerNotifId,
         ]);
     }
 
