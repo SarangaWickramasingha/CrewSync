@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../helpers/requireDb.php';
 require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../config/Jwt.php';
 require_once __DIR__ . '/../middleware/auth.php';
@@ -10,7 +11,7 @@ class AuthController {
     private $db;
 
     public function __construct() {
-        $this->db = Database::getInstance()->getConnection(); // 👈 singleton way
+        $this->db = requireDb(Database::getInstance()->getConnection()); // 👈 singleton way
     }
 
     public function login() {

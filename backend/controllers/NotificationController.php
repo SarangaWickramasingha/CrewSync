@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../helpers/requireDb.php';
 require_once __DIR__ . '/../helpers/clean.php';
 require_once __DIR__ . '/../middleware/auth.php';
 
@@ -7,7 +8,7 @@ class NotificationController {
     private $db;
 
     public function __construct() {
-        $this->db = Database::getInstance()->getConnection();
+        $this->db = requireDb(Database::getInstance()->getConnection());
     }
 
     // Get notifications for the authenticated user
@@ -49,7 +50,8 @@ class NotificationController {
         echo json_encode(["success" => true, "notifications" => $rows]);
     }
 
-    // Create a new notification
+    // Create a new notification (with dedup guard: skip if identical row exists
+    // for the same user within the last 5 seconds — prevents StrictMode double-fires).
     public function createNotification() {
         $user = requireAuth();
         $data = json_decode(file_get_contents("php://input"), true) ?? [];
@@ -63,11 +65,26 @@ class NotificationController {
             return;
         }
 
+        $sanitized = sanitize_notification_html($message);
+
+        // Dedup: reject if an identical notification was just created for this user
+        $stmt = $this->db->prepare("
+            SELECT notification_id FROM notifications
+            WHERE user_id = ? AND title = ? AND message = ?
+              AND created_at > DATE_SUB(NOW(), INTERVAL 5 SECOND)
+            LIMIT 1
+        ");
+        $stmt->execute([$user['user_id'], $type, $sanitized]);
+        if ($existing = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            echo json_encode(["success" => true, "notif_id" => (int) $existing['notification_id']]);
+            return;
+        }
+
         $stmt = $this->db->prepare("
             INSERT INTO notifications (user_id, title, message, is_read) 
             VALUES (?, ?, ?, 0)
         ");
-        $stmt->execute([$user['user_id'], $type, sanitize_notification_html($message)]);
+        $stmt->execute([$user['user_id'], $type, $sanitized]);
 
         echo json_encode(["success" => true, "notif_id" => $this->db->lastInsertId()]);
     }

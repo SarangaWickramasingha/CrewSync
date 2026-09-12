@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../helpers/requireDb.php';
 require_once __DIR__ . '/../middleware/auth.php';
 
 class CommentController {
@@ -8,7 +9,7 @@ class CommentController {
     private $db;
 
     public function __construct() {
-        $this->db = Database::getInstance()->getConnection();
+        $this->db = requireDb(Database::getInstance()->getConnection());
     }
 
     // ── HELPER: can this user access this project's forum? ───────────────────

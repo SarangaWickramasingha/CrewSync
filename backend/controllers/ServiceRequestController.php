@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../helpers/requireDb.php';
 require_once __DIR__ . '/../middleware/auth.php';
 require_once __DIR__ . '/../helpers/notify.php';
 
@@ -8,7 +9,7 @@ class ServiceRequestController {
     private $db;
 
     public function __construct() {
-        $this->db = Database::getInstance()->getConnection();
+        $this->db = requireDb(Database::getInstance()->getConnection());
     }
 
     // ── CREATE SERVICE REQUEST(S) ────────────────────────────────────────────
@@ -125,7 +126,7 @@ class ServiceRequestController {
 
         // Owner display name + user_id (the authenticated property owner)
         $ownerUserId = (int) $user['user_id'];
-        $ownerName = trim(($user['fname'] ?? '') . ' ' . ($user['lname'] ?? ''));
+        $ownerName = trim($user['name'] ?? '');
         if ($ownerName === '') $ownerName = 'Property owner';
 
         // Provider user_id + display name

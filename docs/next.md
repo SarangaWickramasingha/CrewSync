@@ -307,3 +307,36 @@ NOT MENTIONED IN REPORT (but exists in code):
 
 1. Inconsistent terminology: "clients" vs "Property owners" used interchangeably.
 2. Reports claims are overstated for partially-implemented features.
+
+--- E2E Service Request Test Issues (Sep 2 2026) ---
+
+Test scenario: nimal@gmail.com sends service requests to sunil@gmail.com for 2 tasks,
+sunil accepts one and declines the other. Verified via API + DB.
+
+✅ WORKING:
+- Service request creation (POST /api/service-requests) — creates rows + notifications.
+- Provider job requests listing (GET /api/provider/job-requests).
+- Accept/decline flow (PUT /api/provider/job-requests/{id}/respond).
+- Task assignment auto-created on accept (INSERT INTO task_assignments).
+- Provider timeline includes newly assigned project + tasks.
+- Provider forum access works (canAccessProject checks task_assignments).
+- Notifications for owner on accept/decline (with correct provider name from DB).
+- XSS sanitizer on notification messages (issue 11) — working correctly.
+
+FIXED:
+- "Property owner" display name in provider notifications — ServiceRequestController::create()
+  read $user['fname']/$user['lname'] from the JWT, but the JWT payload only has 'name'
+  (combined full name). fname/lname were undefined → fell back to "Property owner".
+  Fixed by using $user['name'] directly. (ServiceRequestController.php:128)
+- Duplicate notifications — ✅ DONE. Root cause: addNotification() (which writes to DB
+  via POST /api/notifications) was called inside React setState updater functions
+  (finishTask, updateTask) which React StrictMode double-invokes in dev mode.
+  Fixed by moving addNotification calls outside setTasks updaters in TasksContext.jsx.
+  Backend dedup guard also added: NotificationController::createNotification() now
+  skips if an identical user_id+title+message row exists within the last 5 seconds.
+- MySQL crash resilience — ✅ DONE. When MySQL goes down, Database::getConnection()
+  returned null, causing fatal "Call to a member function prepare() on null" in all
+  controllers. Fixed by creating helpers/requireDb.php (mirrors requireAuth() pattern:
+  sends 500 JSON + exit()) and adding requireDb() call in all 13 controller
+  constructors. DB-down now returns clean {"success":false,"message":"Database
+  connection unavailable. Please try again later."} instead of a PHP fatal.
