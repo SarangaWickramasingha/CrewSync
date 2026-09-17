@@ -6,15 +6,14 @@ require_once __DIR__ . '/config/cors.php';
 require_once __DIR__ . '/config/database.php';
 
 // Get request URI
-$uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+// Get request URI
+$requestPath = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $method = $_SERVER['REQUEST_METHOD'];
 
-// Remove folder path (adjust if needed)
-$scriptName = $_SERVER['SCRIPT_NAME'];
-if (strpos($uri, $scriptName) === 0) {
-    $uri = substr($uri, strlen($scriptName));
-}
-if ($uri === '' || $uri === false) {
+// Take everything after 'index.php', regardless of what prefix precedes it
+// (works whether accessed as /index.php/..., /backend/index.php/..., or /CrewSync-backend/backend/index.php/...)
+$uri = preg_replace('#^.*?index\.php#', '', $requestPath);
+if ($uri === '' || $uri === null) {
     $uri = '/';
 }
 // Debug mode — only runs if you add ?debug=1 to the URL
