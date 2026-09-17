@@ -18,10 +18,20 @@ if ($uri === '' || $uri === false) {
     $uri = '/';
 }
 // Debug mode — only runs if you add ?debug=1 to the URL
+// Debug mode — only runs if you add ?debug=1 to the URL
 if (isset($_GET['debug'])) {
-    echo json_encode(["debug_uri" => $uri, "method" => $method]);
+    echo json_encode([
+        "request_uri"   => $_SERVER['REQUEST_URI'] ?? null,
+        "script_name"   => $_SERVER['SCRIPT_NAME'] ?? null,
+        "path_info"     => $_SERVER['PATH_INFO'] ?? null,
+        "php_self"      => $_SERVER['PHP_SELF'] ?? null,
+        "computed_uri"  => $uri,
+        "method"        => $method,
+    ]);
     exit();
 }
+
+
 if ($uri === '/api/auth/login' && $method === 'POST') {
     require_once __DIR__ . '/routes/auth.php';
     login();
