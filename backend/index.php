@@ -10,9 +10,13 @@ $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $method = $_SERVER['REQUEST_METHOD'];
 
 // Remove folder path (adjust if needed)
-$uri = str_replace('/CrewSync/backend/index.php', '', $uri);
-$uri = str_replace('/CrewSync-backend/backend/index.php', '', $uri);
-
+$scriptName = $_SERVER['SCRIPT_NAME'];
+if (strpos($uri, $scriptName) === 0) {
+    $uri = substr($uri, strlen($scriptName));
+}
+if ($uri === '' || $uri === false) {
+    $uri = '/';
+}
 // Debug mode — only runs if you add ?debug=1 to the URL
 if (isset($_GET['debug'])) {
     echo json_encode(["debug_uri" => $uri, "method" => $method]);
