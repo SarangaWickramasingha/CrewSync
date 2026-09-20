@@ -1,0 +1,400 @@
+Photo Upload & Delete Implementation Notes (UPDATED)
+=====================================================
+
+Scope: Service Provider can add project photos to a review they received and
+delete them. Frontend refactored into reusable components (DRY). This file is
+the reference for BOTH sides; backend sections give exact request/response and
+permission rules.
+
+=========================================================================
+BACKEND — CrewSync-backend/backend
+=========================================================================
+
+1) FILES INVOLVED
+   - controllers/ProviderController.php  (all logic)
+   - routes/provider.php                 (function wrappers)
+   - index.php                           (router / URI mapping)
+   - uploads/review_photos/              (stored files)
+   - DB table: review_photos (review_id, photo_id, file_path)
+
+2) ENDPOINTS (index.php)
+   GET    /api/provider/reviews/all                -> getAllReviews        (line 256)
+   POST   /api/reviews/{review_id}/photos          -> uploadProviderReviewPhotos (lines 260-262)
+   DELETE /api/review-photos/{photo_id}            -> deleteProviderReviewPhoto (lines 264-266)
+
+   routes/provider.php wrappers:
+   - uploadProviderReviewPhotos($reviewId)  (line 40)
+   - deleteProviderReviewPhoto($photoId)    (line 44)
+
+3) CONTROLLER METHODS — controllers/ProviderController.php
+
+   a) getUploadsBaseUrl() (line 21)
+      Returns "{$scheme}://{$host}/CrewSync-backend/backend/uploads/".
+      Every photo URL returned to the frontend = base + file_path.
+
+   b) getAllReviews() (lines 484-529)
+      - Role: service_provider (requireRole)
+      - Resolves provider_id from logged-in user
+      - Per review, loads: SELECT photo_id, file_path FROM review_photos WHERE review_id = ?
+      - Response shape per review:
+          "photos": [ { "photo_id": int, "url": "<base>/review_photos/<file>" } ]
+      - Also used (public) getPublicProfile() lines 574-585 for guest view,
+        but that one returns photos as plain URL strings only.
+
+   c) uploadReviewPhotos($reviewId) (lines 631-690)
+      - Role: service_provider
+      - Permission: review must exist AND r.provider_id = caller's provider_id
+        (SELECT ... WHERE review_id = ? AND provider_id = ?) else 403.
+      - Input: multipart/form-data, field key = "photos" (array of files)
+        (frontend also sends "images[]" but backend IGNORES it)
+      - Validation per file:
+          * error must be UPLOAD_ERR_OK
+          * MIME (mime_content_type) in [image/jpeg, image/png, image/webp, image/gif]
+          * size <= 5MB (5 * 1024 * 1024)
+        Invalid/skipped files are silently dropped.
+      - Filename: review_{reviewId}_{time()}_{bin2hex(random_bytes(4))}.{ext}
+        (ext sanitized to [a-zA-Z0-9])
+      - Store: move_uploaded_file -> uploads/review_photos/<filename>
+      - DB: INSERT INTO review_photos (review_id, file_path) VALUES (?, "review_photos/<filename>")
+      - Response: { "success": true, "photos": [ { "photo_id": int, "url": "<base>/review_photos/<file>" } ] }
+
+   d) deleteReviewPhoto($photoId) (lines 693-721)
+      - Role: service_provider
+      - Permission: photo must belong to a review owned by caller:
+          SELECT rp.file_path FROM review_photos rp
+          JOIN reviews r ON r.review_id = rp.review_id
+          WHERE rp.photo_id = ? AND r.provider_id = ?
+        else 404 "Photo not found".
+      - Deletes physical file: $filePath = uploads/<file_path>; unlink() if exists
+      - DB: DELETE FROM review_photos WHERE photo_id = ?
+      - Response: { "success": true }
+
+4) STORAGE / DB
+   - Dir: backend/uploads/review_photos/
+   - Table review_photos created in SQL dump/seeds (NOT in PHP code):
+       review_id  (FK -> reviews.review_id)
+       photo_id   (PK auto-increment)
+       file_path  (VARCHAR; value = "review_photos/<filename>")
+   - No record of owner on review_photos itself; ownership derives from the
+     parent review's provider_id.
+
+=========================================================================
+FRONTEND — crewSync-frontend
+=========================================================================
+
+1) app/dashboard/serviceprovider/reviews/page.jsx  (THIN — DRY)
+   - Only renders <ReviewsSection />. All logic lives in components below.
+
+2) src/components/serviceProvider/ReviewsSection.jsx
+   - Reusable reviews list: header + avg-rating badge + N x ReviewCard
+   - Normalizes API data (id, name, stars, text, date), merges photo lists,
+     dedupes by URL via getPhotoUrl()
+   - Owns shared UI: lightbox modal, PhotoDeleteModal (delete confirmation)
+   - localStorage state: crewsync_provider_review_photos (pending images cache)
+   - removeSavedPhoto() -> marks photo deleted locally + calls useDeleteReviewPhoto
+   - handleUploadComplete() -> clears localAddedPhotos cache after server sync
+
+3) src/components/serviceProvider/ReviewCard.jsx
+   - Reusable single-review card (one instance per review in any list)
+   - Avatar / stars / date / comment + "Project Images" grid
+   - Upload flow: file picker -> fileToDataUrl() preview (pendingFiles state)
+     -> handleUpdate() builds FormData:
+         'photos[]' x each file
+         'images[]' x each file   (harmless extra, backend ignores)
+         'review_id' = review.id
+     then calls uploadPhotos.mutateAsync({ reviewId, formData })
+   - Delete flow: × button -> onRequestDelete(reviewId, photoId, url)
+     -> parent opens PhotoDeleteModal -> confirm -> removeSavedPhoto
+   - Report flow: useReportReview + localStorage crewsync_reported_reviews
+
+4) src/components/serviceProvider/reviewUtils.js
+   - Shared constants/helpers: C (palette), AVATAR_STYLES, initialsOf,
+     fileToDataUrl, getPhotoUrl (maps relative/url paths to base host
+     http://localhost:8080/CrewSync-backend/backend/uploads)
+
+5) src/components/serviceProvider/PhotoDeleteModal.jsx
+   - Animated confirm dialog used before DELETE is sent.
+
+6) src/hooks/provider/useProvider.js
+   - useAllReviews (56), useUploadReviewPhotos (60), useDeleteReviewPhoto (68)
+
+7) src/api/providerApi.js
+   - fetchAllReviews(58), uploadReviewPhotos(62, POST + multipart headers),
+     deleteReviewPhoto(69, DELETE)
+
+8) config/api.js
+   - API_REVIEW_PHOTOS_UPLOAD  = POST  /api/reviews/{reviewId}/photos  (line 64)
+   - API_REVIEW_PHOTO_DELETE   = DELETE /api/review-photos/{photoId}   (line 65)
+   - API_PROVIDER_ALL_REVIEWS  = GET   /api/provider/reviews/all       (line 63)
+
+=========================================================================
+CONTRACT SUMMARY (for backend devs)
+=========================================================================
+- Auth: bearer token; role service_provider on all three endpoints.
+- Ownership: photo ops require the review's provider_id == logged-in provider.
+  403 for wrong provider on upload; 404 on delete if not found/unauthorized.
+- Upload: POST multipart, files under "photos[]", max 5MB each, MIME allowed
+  jpeg/png/webp/gif. Success returns per-file photo_id + absolute URL.
+- Delete: DELETE by photo_id; unlinks file then removes DB row.
+- Serving files: PHP/htdocs serves uploads/ directly (no auth on static files).
+- Table review_photos: photos carry no owner column; use parent review for auth.
+
+
+Plan: Upload Review Photos to Cloudflare R2 (instead of local/uploads)
+======================================================================
+Status: IMPLEMENTED (Sep 20 2026) — backend done & smoke-tested against R2.
+        Public URL configured (https://pub-cc038b8ee3a84f0b89e23ca66487cadd.r2.dev)
+        and verified: object fetched over the public URL with HTTP 200.
+        Shipped in git commit 0086af1 "upload 4tos" — see section 8 below
+        for the per-file record of what was written.
+Reference: photouploadimpl.txt (existing local-upload implementation), utils/s3.php, .env.
+
+----------------------------------------------------------------------
+1. WHY / GOAL
+----------------------------------------------------------------------
+- Store review photos in Cloudflare R2 (S3-compatible object storage) so they
+  are not lost when the local uploads/ folder is wiped or on serverless deploys.
+- Keep the API contract (endpoints, JSON shape, permission rules) unchanged so
+  the frontend keeps working with little or no change.
+
+----------------------------------------------------------------------
+2. CURRENT STATE (already verified)
+----------------------------------------------------------------------
+BACKEND (CrewSync-backend/backend)
+- utils/s3.php: builds an AWS SDK v3 S3Client ($s3) + $bucketName from
+  BUCKET_ACCESS_KEY_ID / BUCKET_SECRET_ACCESS_KEY / BUCKET_BUCKET_NAME (.env).
+  NOTE: those BUCKET_* values currently point at AWS S3 with an access key AWS
+  rejects (InvalidAccessKeyId). They are NOT R2 credentials.
+- controllers/ProviderController.php:
+    * getUploadsBaseUrl()        (line 18) -> http://<host>/CrewSync-backend/backend/uploads/
+    * getAllReviews()            (line ~484) returns "photos":[{"photo_id","url"}]
+        url = base + file_path
+    * getPublicProfile()         (line ~574) returns photos as plain URL strings
+    * uploadReviewPhotos()       (line ~631) validates MIME/size, filename
+        review_{id}_{time}_{rand}.{ext}, move_uploaded_file to
+        uploads/review_photos/, INSERT review_photos(review_id, file_path)
+    * deleteReviewPhoto()        (line ~693) unlink uploads/<file_path>, DELETE row
+- DB table review_photos: review_id, photo_id, file_path
+  (file_path value = "review_photos/<filename>"). No schema change needed.
+- routes/provider.php + index.php already map the three endpoints.
+
+FRONTEND (Sp-supplier/crewSync-frontend)
+- app/dashboard/serviceprovider/reviews/page.jsx -> only renders <ReviewsSection/>.
+  NO change needed for the R2 plan.
+- src/components/serviceProvider/reviewUtils.js -> getPhotoUrl(url):
+    - passes through data:/blob: and any http:// or https:// URL unchanged
+    - only rewrites http://localhost/ -> http://localhost:8080/
+    - for relative paths prefixes http://localhost:8080/CrewSync-backend/backend/uploads
+  => Because the backend will return ABSOLUTE http(s) URLs, frontend passes them
+     through unchanged. (Only relative-path fallback branch is irrelevant.)
+- ReviewCard.jsx upload: FormData with "photos[]" (+ harmless "images[]") and
+  "review_id". Sends to POST /api/reviews/{reviewId}/photos. Unchanged.
+- ReviewsSection.jsx delete: DELETE /api/review-photos/{photoId}. Unchanged.
+- providerApi.js uploadReviewPhotos/deleteReviewPhoto, config/api.js endpoints:
+  unchanged.
+
+----------------------------------------------------------------------
+3. R2 SPECIFICS
+----------------------------------------------------------------------
+- R2 exposes an S3-compatible API at https://<ACCOUNT_ID>.r2.cloudflarestorage.com
+  (S3 SDKs talk to it directly). SigV4 signing supported -> works with the
+  currently installed aws/aws-sdk-php 3.337.0 (pinned for PHP 8.0).
+- Credentials: R2 Access Key ID + Secret Access Key (created in Cloudflare
+  dashboard > R2 > Manage R2 API Tokens), NOT the current invalid AWS keys.
+- Target bucket (provided by user, Sep 20 2026):
+      Bucket name : crewsync          (location: Asia-Pacific APAC)
+      Account id  : b125684ad4aadcc257ae31677b02376e
+      S3 API      : https://b125684ad4aadcc257ae31677b02376e.r2.cloudflarestorage.com/crewsync
+                    (endpoint = https://b125684ad4aadcc257ae31677b02376e.r2.cloudflarestorage.com,
+                     final URL = endpoint + "/crewsync")
+- Region: use "auto".
+- Public access decision (GET URLs returned to the frontend):
+    Option A — PRIVATE bucket + PRESIGNED GET URLs (recommended, zero dashboard
+               setup): backend generates $s3->createPresignedUrl(GetObject cmd,
+               expiry) per photo. Pros: bucket stays private. Cons: URLs expire
+               (set BUCKET_URL_EXPIRY_SECONDS, e.g. 3600; frontend must re-fetch
+               the review list to get fresh URLs — which it already does).
+    Option B — PUBLIC bucket + custom domain (or *.r2.dev): permanent URLs
+               https://<pub-host>/review_photos/<file>. Pros: cacheable, permanent.
+               Cons: bucket must be made public in the Cloudflare dashboard; set
+               R2_PUBLIC_URL so backend can build URLs.
+  Decision recorded: implement Option A first (works out of the box); the code
+  will branch on R2_PUBLIC_URL being set, so Option B is a config change later.
+
+----------------------------------------------------------------------
+4. BACKEND CHANGES (when approved)
+----------------------------------------------------------------------
+4.1 .env (add below the existing BUCKET_* block; do NOT commit — .env is ignored)
+    R2_ACCOUNT_ID=b125684ad4aadcc257ae31677b02376e   # from R2 dashboard (matches S3 API host)
+    R2_ACCESS_KEY_ID=<r2 access key id (from "Manage R2 API Tokens")>
+    R2_SECRET_ACCESS_KEY=<r2 secret access key (from "Manage R2 API Tokens")>
+    R2_BUCKET_NAME=crewsync
+    R2_PUBLIC_URL=            # empty => presigned GET URLs (already working);
+                              # set to your public hostname (e.g. https://pub-xxx.r2.dev
+                              # or your custom domain) to get permanent public URLs
+    BUCKET_URL_EXPIRY_SECONDS=3600   # presigned URL lifetime (only used when R2_PUBLIC_URL empty)
+    OPTIONAL: BUCKET_PREFIX=uploads  # key prefix inside the bucket (mirrors old layout)
+
+  IMPLEMENTATION NOTES (verified live against R2):
+  - utils/s3.php now builds the client with endpoint
+    https://b125684ad4aadcc257ae31677b02376e.r2.cloudflarestorage.com, region "auto",
+    use_path_style_endpoint=true, credentials from R2_ACCESS_KEY_ID/R2_SECRET_ACCESS_KEY.
+  - This SDK build (3.337.0) has NO S3Client::createPresignedUrl. A manual SigV4
+    presigner is used instead (SignatureV4 + \Aws\serialize + UNSIGNED-PAYLOAD).
+    Verified: presigned GET URL fetched the object from R2 with HTTP 200.
+  - ProviderController: upload -> r2UploadFile(), delete -> r2DeleteFile(), URLs via
+    r2PhotoUrl() (public when R2_PUBLIC_URL set, else presigned). Keys live under
+    "uploads/review_photos/<file>" (BUCKET_PREFIX=uploads).
+
+4.2 utils/s3.php (rewrite client construction only; keep helper functions)
+    - Build the S3Client with R2 overrides when R2_* vars exist:
+        endpoint    => "https://{$R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+        region      => "auto"
+        version     => "latest"
+        credentials => [key => R2_ACCESS_KEY_ID, secret => R2_SECRET_ACCESS_KEY]
+      else fall back to current AWS BUCKET_* behavior.
+    - Keep $s3 + $bucketName globals.
+    - Add helpers (as previously drafted, or equivalent in a small R2 class):
+        r2ObjectKey($relativePath)               // prefix + "review_photos/..."
+        r2UploadFile($relativePath, $tmpFile, $mime)   // putObject w/ ContentType
+        r2DeleteFile($relativePath)              // deleteObject
+        r2PublicUrl($relativePath)               // R2_PUBLIC_URL + key (Option B)
+        r2PresignedUrl($relativePath, $expires)  // createPresignedUrl (Option A)
+        r2PhotoUrl($relativePath)                // picks public vs presigned
+
+4.3 controllers/ProviderController.php
+    - require_once ../utils/s3.php at top.
+    - Replace getUploadsBaseUrl() with getReviewPhotoUrl($filePath) that calls
+      r2PhotoUrl($filePath).
+    - uploadReviewPhotos(): keep validation + filename logic; replace
+      move_uploaded_file() with r2UploadFile($relativePath, $tmpPath, $mimeType);
+      on success INSERT review_photos (file_path unchanged format);
+      returned "url" => getReviewPhotoUrl($relativePath).
+    - deleteReviewPhoto(): replace unlink() with r2DeleteFile($photo['file_path']);
+      keep DB DELETE (photo owner security check unchanged).
+    - getAllReviews() + getPublicProfile(): swap getUploadsBaseUrl()... -> getReviewPhotoUrl(...).
+    - Response shapes stay identical -> frontend contract untouched.
+    - Migrating existing photos: optional one-off script to upload existing
+      backend/uploads/review_photos/* to R2 and rewrite rows (not required to ship).
+
+4.4 No routing / DB / validation changes. Keep review_photos.file_path format.
+
+----------------------------------------------------------------------
+5. FRONTEND CHANGES (when approved)
+----------------------------------------------------------------------
+- None strictly required for page.jsx (thin wrapper) or the API layer.
+- reviewUtils.js getPhotoUrl(): already passes absolute http(s) URLs through.
+  Optional hardening: nothing to do.
+- Only if we ever return relative R2 keys: change getPhotoUrl base to the R2
+  public host. NOT needed with the plan above.
+=> Realistically ZERO frontend file edits; the mobile/app gets valid absolute
+   photo URLs from the API and renders them as before.
+
+----------------------------------------------------------------------
+6. TESTING (after implementation)
+----------------------------------------------------------------------
+- php -l backend/utils/s3.php && backend/controllers/ProviderController.php
+- test-upload.php / test-bucket.php repointed to R2 bucket for a smoke test.
+- Upload a review photo via POST /api/reviews/{id}/photos (multipart "photos[]"),
+  confirm 200 { success, photos:[{photo_id, url}] } and object appears in R2
+  bucket "crewsync" (dashboard R2 > crewsync > Objects).
+- GET /api/provider/reviews/all and GET /api/providers/{id}: photo URLs resolve
+  (paste presigned URL in browser within expiry).
+- DELETE /api/review-photos/{id}: object removed from R2 + DB row gone.
+- Verify Content-Type on the object (image/jpeg etc.) so <img> renders inline.
+
+----------------------------------------------------------------------
+7. OPEN QUESTIONS / DECISIONS
+----------------------------------------------------------------------
+- Option A (presigned, private bucket) vs Option B (public domain) for GET URLs.
+- R2 bucket: crewsync (Asia-Pacific APAC) — CONFIRMED.
+- Still needed: R2 Access Key ID + Secret (create an R2 API token for bucket
+  "crewsync" with Object Read, Write, Delete perms) and paste into .env.
+
+----------------------------------------------------------------------
+8. RECORD OF COMMIT "upload 4tos"  (git 0086af1, Sep 20 2026, "4to")
+----------------------------------------------------------------------
+What was actually changed, file by file (R2 photo upload implementation):
+
+[CODE FILES CHANGED]
+1. backend/utils/s3.php  — REWRITTEN
+   - Client: if R2_ACCESS_KEY_ID + R2_SECRET_ACCESS_KEY set -> build S3Client
+     pointing at R2:
+         endpoint   => "https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com"
+         region     => "auto",  version => "latest",
+         use_path_style_endpoint => true,
+         credentials => [key => R2_ACCESS_KEY_ID, secret => R2_SECRET_ACCESS_KEY]
+     else fall back to old AWS BUCKET_* behavior.
+   - Globals set at load: $s3, $bucketName (R2_BUCKET_NAME, default "crewsync"),
+     $bucketPrefix (BUCKET_PREFIX, default "uploads"), $r2PublicUrl
+     (R2_PUBLIC_URL).
+   - New helper functions:
+     * r2ObjectKey($relativePath)      -> "uploads/<path>" (prefix + path)
+     * r2UploadFile($path,$file,$mime) -> $s3->putObject() w/ ContentType
+     * r2DeleteFile($path)             -> $s3->deleteObject()
+     * r2PhotoUrl($path)               -> R2_PUBLIC_URL + key if set, else a
+        manually SIGNED SigV4 presigned GET URL (UNSIGNED-PAYLOAD). Manual
+        because aws/aws-sdk-php 3.337.0 has NO S3Client::createPresignedUrl.
+
+2. backend/controllers/ProviderController.php  — EDITED
+   - Line 6: added  require_once __DIR__ . '/../utils/s3.php';
+   - Replaced private getUploadsBaseUrl() (old local URL builder) with
+     getReviewPhotoUrl($filePath) -> r2PhotoUrl($filePath).
+   - getAllReviews():   photo "url" => getReviewPhotoUrl(file_path)
+   - getPublicProfile(): photo URLs via getReviewPhotoUrl(file_path)
+   - uploadReviewPhotos(): removed $uploadDir + move_uploaded_file(); now
+     r2UploadFile($relativePath, $tmpPath, $mimeType) inside try/catch
+     (Exception) -> on failure skip that file (continue); on success INSERT
+     review_photos(review_id, file_path) and "url" => getReviewPhotoUrl().
+   - deleteReviewPhoto(): replaced unlink(uploads/...) with
+     r2DeleteFile($photo['file_path']) inside try/catch (ignores missing obj).
+   - Response JSON shapes unchanged -> frontend contract untouched.
+
+3. backend/test-bucket.php  — EDITED
+   - No longer uses $s3->createPresignedUrl() (doesn't exist in this SDK).
+   - Now prints r2PhotoUrl('test-upload.txt').
+
+4. backend/test-upload.php  — UNCHANGED (still a live smoke test; uploads
+   uploads/test-upload.txt to R2 via $s3->putObject and prints the object URL).
+
+[REPO / HOUSEKEEPING]
+5. .gitignore  — added backend/photouploadimpl.txt and backend/uploadphotosimp.txt
+   (keeps these plan docs out of git).
+
+6. backend/uploads/review_photos/*.jpg (3 old local photos)  — DELETED from disk.
+   Corresponding rows were also deleted from DB table review_photos
+   (the local uploads/ workflow is replaced by R2).
+
+[LOCAL, NOT COMMITTED]
+7. .env  — added the R2_* block (R2_ACCOUNT_ID, R2_ACCESS_KEY_ID,
+   R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, R2_PUBLIC_URL). .env is gitignored.
+
+[LATER FOLLOW-UP COMMIT]
+8. git 7fe04db "erroe fix" — utils/s3.php: r2UploadFile() return type changed
+   `: array` -> `: \Aws\Result` (matches what putObject() returns; fixes an
+   intelephense type warning; no behavior change).
+
+LIVE VERIFIED (against the real R2 bucket "crewsync" @ APAC):
+- Upload via test-upload.php/tmp scripts          -> object landed in R2
+- r2PhotoUrl() presigned path                      -> fetched object HTTP 200
+- R2_PUBLIC_URL public path  https://pub-cc038b8ee3a84f0b89e23ca66487cadd.r2.dev
+                                                   -> fetched object HTTP 200
+- r2DeleteFile('test-upload.txt')                 -> object removed from R2
+
+KNOWN DEPLOYMENT GAP (separate from this commit):
+- The Docker build (backend/Dockerfile) never runs composer install and
+  backend/vendor/ is gitignored, so on Render the require of
+  vendor/autoload.php in utils/s3.php fatals and breaks every ProviderController
+  endpoint. Fix pending: guard the autoload require in s3.php AND ship vendor
+  to the server (composer install in Dockerfile or commit vendor).
+
+
+
+R2_ACCESS_KEY_ID="f1a3a23edb70c4b6ffdffd5091e0cc76"
+R2_SECRET_ACCESS_KEY=ac90a7aaacfd1111ceabea90e6e1bc743108dc63e96681eaa3def0a5b36563e3
+R2_BUCKET_NAME=crewsync
+R2_ACCOUNT_ID=b125684ad4aadcc257ae31677b02376e
+# Public hostname for the crewsync bucket (Cloudflare R2 > crewsync > Settings > Public access).
+# Example: https://pub-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx.r2.dev  (trailing slash optional).
+# Public URLs are used when set; otherwise presigned URLs are generated.
+R2_PUBLIC_URL=https://pub-cc038b8ee3a84f0b89e23ca66487cadd.r2.dev
