@@ -47,7 +47,7 @@ function r2ObjectKey(string $relativePath): string {
     return $bucketPrefix . '/' . ltrim($relativePath, '/');
 }
 
-function r2UploadFile(string $relativePath, string $sourceFile, ?string $contentType = null): array {
+function r2UploadFile(string $relativePath, string $sourceFile, ?string $contentType = null): \Aws\Result {
     global $s3, $bucketName;
 
     $params = array(
