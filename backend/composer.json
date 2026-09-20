@@ -1,18 +1,2 @@
 {
-    "require": {
-        "aws/aws-sdk-php": "3.337.0"
-    },
-    "config": {
-        "platform": {
-            "php": "8.0.30"
-        },
-        "policy": {
-            "advisories": {
-                "ignore-id": [
-                    "PKSA-4t1p-xpk2-nsss",
-                    "PKSA-dxyf-6n16-t87m"
-                ]
-            }
-        }
-    }
 }
