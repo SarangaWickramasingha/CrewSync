@@ -3,7 +3,6 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../helpers/requireDb.php';
 require_once __DIR__ . '/../middleware/auth.php';
 require_once __DIR__ . '/../helpers/notify.php';
-require_once __DIR__ . '/../utils/s3.php';
 
 class ProviderController {
 
@@ -14,11 +13,13 @@ class ProviderController {
     }
 
 
-    private function getReviewPhotoUrl($filePath) {
-        return r2PhotoUrl($filePath);
-    }
-
     // ── TOGGLE AVAILABILITY STATUS ────────────────────────────────────────────
+    
+    private function getUploadsBaseUrl() {
+        $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost:8080';
+        return "{$scheme}://{$host}/CrewSync-backend/backend/uploads/";
+    }
 public function toggleAvailability() {
         $user = requireRole('service_provider');
 
@@ -519,7 +520,7 @@ public function toggleAvailability() {
                 "text"     => $r['comment'],
                 "photos"   => array_map(fn($p) => [
                     "photo_id" => $p['photo_id'],
-                    "url"      => $this->getReviewPhotoUrl($p['file_path']),
+                    "url"      => $this->getUploadsBaseUrl() . $p['file_path'],
                 ], $photos),
             ];
         }
@@ -580,7 +581,7 @@ public function toggleAvailability() {
                 "date"    => date('F j, Y', strtotime($r['review_date'])),
                 "rating"  => (int) $r['rating'],
                 "comment" => $r['comment'],
-                "photos"  => array_map(fn($p) => $this->getReviewPhotoUrl($p['file_path']), $photoPaths),
+                "photos"  => array_map(fn($p) => $this->getUploadsBaseUrl() . $p['file_path'], $photoPaths),
             ];
         }
 
@@ -657,6 +658,7 @@ public function toggleAvailability() {
 
         $allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
         $maxSize = 5 * 1024 * 1024; // 5MB
+        $uploadDir = __DIR__ . '/../uploads/review_photos/';
         $uploaded = [];
 
         $fileCount = count($_FILES['photos']['name']);
@@ -672,20 +674,16 @@ public function toggleAvailability() {
             $ext = pathinfo($_FILES['photos']['name'][$i], PATHINFO_EXTENSION);
             $safeExt = preg_replace('/[^a-zA-Z0-9]/', '', $ext);
             $filename = "review_{$reviewId}_" . time() . "_" . bin2hex(random_bytes(4)) . "." . $safeExt;
-            $relativePath = "review_photos/" . $filename;
 
-            try {
-                r2UploadFile($relativePath, $tmpPath, $mimeType);
-            } catch (Exception $e) {
-                continue;
+            if (move_uploaded_file($tmpPath, $uploadDir . $filename)) {
+                $relativePath = "review_photos/" . $filename;
+                $stmt = $this->db->prepare("INSERT INTO review_photos (review_id, file_path) VALUES (?, ?)");
+                $stmt->execute([$reviewId, $relativePath]);
+                $uploaded[] = [
+                    "photo_id" => $this->db->lastInsertId(),
+                    "url"      => $this->getUploadsBaseUrl() . $relativePath,
+                ];
             }
-
-            $stmt = $this->db->prepare("INSERT INTO review_photos (review_id, file_path) VALUES (?, ?)");
-            $stmt->execute([$reviewId, $relativePath]);
-            $uploaded[] = [
-                "photo_id" => $this->db->lastInsertId(),
-                "url"      => $this->getReviewPhotoUrl($relativePath),
-            ];
         }
 
         echo json_encode(["success" => true, "photos" => $uploaded]);
@@ -713,11 +711,8 @@ public function toggleAvailability() {
             return;
         }
 
-        try {
-            r2DeleteFile($photo['file_path']);
-        } catch (Exception $e) {
-            // Ignore deletion errors on missing objects
-        }
+        $filePath = __DIR__ . '/../uploads/' . $photo['file_path'];
+        if (file_exists($filePath)) unlink($filePath);
 
         $stmt = $this->db->prepare("DELETE FROM review_photos WHERE photo_id = ?");
         $stmt->execute([$photoId]);
