@@ -15,6 +15,21 @@ class ProviderController {
 
     // ── TOGGLE AVAILABILITY STATUS ────────────────────────────────────────────
     
+        private function getReviewPhotoUrl($filePath) {
+        if (str_starts_with($filePath, 'http://') || str_starts_with($filePath, 'https://')) {
+            return $filePath;
+        }
+        require_once __DIR__ . '/../config/Env.php';
+        Env::load();
+        $r2PublicUrl = rtrim(Env::get('R2_PUBLIC_URL', ''), '/');
+        if ($r2PublicUrl !== '') {
+            $prefix = trim(Env::get('BUCKET_PREFIX', 'uploads'), '/');
+            $key = $prefix ? ($prefix . '/' . ltrim($filePath, '/')) : ltrim($filePath, '/');
+            return $r2PublicUrl . '/' . $key;
+        }
+        return $this->getUploadsBaseUrl() . ltrim($filePath, '/');
+    }
+
     private function getUploadsBaseUrl() {
         $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
         $host = $_SERVER['HTTP_HOST'] ?? 'localhost:8080';
@@ -520,7 +535,7 @@ public function toggleAvailability() {
                 "text"     => $r['comment'],
                 "photos"   => array_map(fn($p) => [
                     "photo_id" => $p['photo_id'],
-                    "url"      => $this->getUploadsBaseUrl() . $p['file_path'],
+                    "url"      => $this->getReviewPhotoUrl($p['file_path']),
                 ], $photos),
             ];
         }
@@ -581,7 +596,7 @@ public function toggleAvailability() {
                 "date"    => date('F j, Y', strtotime($r['review_date'])),
                 "rating"  => (int) $r['rating'],
                 "comment" => $r['comment'],
-                "photos"  => array_map(fn($p) => $this->getUploadsBaseUrl() . $p['file_path'], $photoPaths),
+                "photos"  => array_map(fn($p) => $this->getReviewPhotoUrl($p['file_path']), $photoPaths),
             ];
         }
 
@@ -627,97 +642,18 @@ public function toggleAvailability() {
         ]);
     }
 
-    // ── UPLOAD REVIEW PHOTOS ────────────────────────────────────────────────────
+        // ── UPLOAD REVIEW PHOTOS ──────────────────────────────────────────────────────────
     public function uploadReviewPhotos($reviewId) {
-        $user = requireRole('service_provider');
-
-        $stmt = $this->db->prepare("SELECT provider_id FROM service_providers WHERE user_id = ?");
-        $stmt->execute([$user['user_id']]);
-        $provider = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$provider) {
-            http_response_code(404);
-            echo json_encode(["success" => false, "message" => "Service provider profile not found"]);
-            return;
-        }
-
-        // Confirm this review belongs to this provider
-        $stmt = $this->db->prepare("SELECT review_id FROM reviews WHERE review_id = ? AND provider_id = ?");
-        $stmt->execute([$reviewId, $provider['provider_id']]);
-        if (!$stmt->fetch(PDO::FETCH_ASSOC)) {
-            http_response_code(403);
-            echo json_encode(["success" => false, "message" => "You don't have permission to add photos to this review"]);
-            return;
-        }
-
-        if (empty($_FILES['photos'])) {
-            http_response_code(400);
-            echo json_encode(["success" => false, "message" => "No files uploaded"]);
-            return;
-        }
-
-        $allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-        $maxSize = 5 * 1024 * 1024; // 5MB
-        $uploadDir = __DIR__ . '/../uploads/review_photos/';
-        $uploaded = [];
-
-        $fileCount = count($_FILES['photos']['name']);
-        for ($i = 0; $i < $fileCount; $i++) {
-            if ($_FILES['photos']['error'][$i] !== UPLOAD_ERR_OK) continue;
-
-            $tmpPath = $_FILES['photos']['tmp_name'][$i];
-            $mimeType = mime_content_type($tmpPath);
-            $size = $_FILES['photos']['size'][$i];
-
-            if (!in_array($mimeType, $allowedTypes) || $size > $maxSize) continue;
-
-            $ext = pathinfo($_FILES['photos']['name'][$i], PATHINFO_EXTENSION);
-            $safeExt = preg_replace('/[^a-zA-Z0-9]/', '', $ext);
-            $filename = "review_{$reviewId}_" . time() . "_" . bin2hex(random_bytes(4)) . "." . $safeExt;
-
-            if (move_uploaded_file($tmpPath, $uploadDir . $filename)) {
-                $relativePath = "review_photos/" . $filename;
-                $stmt = $this->db->prepare("INSERT INTO review_photos (review_id, file_path) VALUES (?, ?)");
-                $stmt->execute([$reviewId, $relativePath]);
-                $uploaded[] = [
-                    "photo_id" => $this->db->lastInsertId(),
-                    "url"      => $this->getUploadsBaseUrl() . $relativePath,
-                ];
-            }
-        }
-
-        echo json_encode(["success" => true, "photos" => $uploaded]);
+        require_once __DIR__ . '/ReviewPhotoController.php';
+        $controller = new ReviewPhotoController();
+        $controller->uploadReviewPhotos($reviewId);
     }
 
-    // ── DELETE REVIEW PHOTO ─────────────────────────────────────────────────────
+    // ── DELETE REVIEW PHOTO ──────────────────────────────────────────────────────────
     public function deleteReviewPhoto($photoId) {
-        $user = requireRole('service_provider');
-
-        $stmt = $this->db->prepare("SELECT provider_id FROM service_providers WHERE user_id = ?");
-        $stmt->execute([$user['user_id']]);
-        $provider = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        $stmt = $this->db->prepare("
-            SELECT rp.file_path FROM review_photos rp
-            JOIN reviews r ON r.review_id = rp.review_id
-            WHERE rp.photo_id = ? AND r.provider_id = ?
-        ");
-        $stmt->execute([$photoId, $provider['provider_id']]);
-        $photo = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$photo) {
-            http_response_code(404);
-            echo json_encode(["success" => false, "message" => "Photo not found"]);
-            return;
-        }
-
-        $filePath = __DIR__ . '/../uploads/' . $photo['file_path'];
-        if (file_exists($filePath)) unlink($filePath);
-
-        $stmt = $this->db->prepare("DELETE FROM review_photos WHERE photo_id = ?");
-        $stmt->execute([$photoId]);
-
-        echo json_encode(["success" => true]);
+        require_once __DIR__ . '/ReviewPhotoController.php';
+        $controller = new ReviewPhotoController();
+        $controller->deleteReviewPhoto($photoId);
     }
 
 

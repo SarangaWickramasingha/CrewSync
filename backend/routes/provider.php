@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../controllers/ProviderController.php';
+require_once __DIR__ . '/../controllers/ReviewPhotoController.php';
 
 function toggleProviderAvailability() {
     $controller = new ProviderController();
@@ -38,11 +39,11 @@ function getProviderAllReviews() {
     $controller->getAllReviews();
 }
 function uploadProviderReviewPhotos($reviewId) {
-    $controller = new ProviderController();
+    $controller = new ReviewPhotoController();
     $controller->uploadReviewPhotos($reviewId);
 }
 function deleteProviderReviewPhoto($photoId) {
-    $controller = new ProviderController();
+    $controller = new ReviewPhotoController();
     $controller->deleteReviewPhoto($photoId);
 }
 function getProviderProfile() {
