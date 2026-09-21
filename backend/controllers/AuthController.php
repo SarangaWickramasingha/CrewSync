@@ -4,6 +4,7 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../helpers/requireDb.php';
 require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../config/Jwt.php';
+require_once __DIR__ . '/../config/Env.php';
 require_once __DIR__ . '/../middleware/auth.php';
 
 class AuthController {
@@ -90,6 +91,14 @@ class AuthController {
         $sent = sendOtpEmail($email, $otp);
 
         if (!$sent) {
+            if (Env::get('APP_ENV') === 'development') {
+                echo json_encode([
+                    "success" => true,
+                    "message" => "Development mode: OTP generated.",
+                    "dev_otp" => $otp,
+                ]);
+                return;
+            }
             http_response_code(500);
             echo json_encode(["success" => false, "message" => "Could not send verification email. Please try again."]);
             return;
