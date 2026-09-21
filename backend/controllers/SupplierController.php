@@ -57,58 +57,7 @@ class SupplierController {
             ];
         }, $rows);
 
-        $stmt = $this->db->prepare("
-            SELECT m.material_id, m.name, m.unit
-            FROM materials m
-            WHERE m.material_id NOT IN (
-                SELECT material_id FROM supplier_materials WHERE supplier_id = ?
-            )
-            ORDER BY m.name ASC
-        ");
-        $stmt->execute([$supplierId]);
-        $availableMaterials = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        echo json_encode([
-            "success"             => true,
-            "products"            => $products,
-            "available_materials" => array_map(fn($m) => [
-                "material_id" => (int) $m['material_id'],
-                "name"        => $m['name'],
-                "unit"        => $m['unit'],
-            ], $availableMaterials),
-        ]);
-    }
-
-    // ── GET AVAILABLE MATERIALS (materials supplier does not have) ───────────
-    public function getAvailableMaterials() {
-        $user = requireRole('material_supplier');
-        $supplierId = $this->getSupplierId($user['user_id']);
-
-        if (!$supplierId) {
-            http_response_code(404);
-            echo json_encode(["success" => false, "message" => "Supplier profile not found"]);
-            return;
-        }
-
-        $stmt = $this->db->prepare("
-            SELECT m.material_id, m.name, m.unit
-            FROM materials m
-            WHERE m.material_id NOT IN (
-                SELECT material_id FROM supplier_materials WHERE supplier_id = ?
-            )
-            ORDER BY m.name ASC
-        ");
-        $stmt->execute([$supplierId]);
-        $availableMaterials = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        echo json_encode([
-            "success"   => true,
-            "materials" => array_map(fn($m) => [
-                "material_id" => (int) $m['material_id'],
-                "name"        => $m['name'],
-                "unit"        => $m['unit'],
-            ], $availableMaterials),
-        ]);
+        echo json_encode(["success" => true, "products" => $products]);
     }
 
     // ── ADD OR UPDATE A PRODUCT (upsert by supplier_id + material_id) ──────────

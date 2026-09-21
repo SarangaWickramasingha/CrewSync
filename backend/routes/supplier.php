@@ -6,11 +6,6 @@ function getSupplierProducts() {
     $controller->getProducts();
 }
 
-function getSupplierAvailableMaterials() {
-    $controller = new SupplierController();
-    $controller->getAvailableMaterials();
-}
-
 function upsertSupplierProduct() {
     $controller = new SupplierController();
     $controller->upsertProduct();

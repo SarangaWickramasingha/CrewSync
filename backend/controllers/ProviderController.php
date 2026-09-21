@@ -677,24 +677,10 @@ public function toggleAvailability() {
         }
 
         $stmt = $this->db->prepare("
-            SELECT ps.skill_id, s.name, ps.experience_yr, ps.description 
-            FROM provider_skills ps
-            LEFT JOIN skills s ON s.skill_id = ps.skill_id
-            WHERE ps.provider_id = ?
+            SELECT skill_id, experience_yr, description FROM provider_skills WHERE provider_id = ?
         ");
         $stmt->execute([$row['provider_id']]);
         $skills = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        $stmt = $this->db->prepare("
-            SELECT s.skill_id, s.name 
-            FROM skills s
-            WHERE s.skill_id NOT IN (
-                SELECT skill_id FROM provider_skills WHERE provider_id = ?
-            )
-            ORDER BY s.name ASC
-        ");
-        $stmt->execute([$row['provider_id']]);
-        $availableSkills = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         echo json_encode([
             "success" => true,
@@ -707,48 +693,9 @@ public function toggleAvailability() {
             ],
             "skills" => array_map(fn($s) => [
                 "skill_id" => (int) $s['skill_id'],
-                "name"     => $s['name'],
                 "years"    => (int) $s['experience_yr'],
                 "desc"     => $s['description'],
             ], $skills),
-            "available_skills" => array_map(fn($s) => [
-                "skill_id" => (int) $s['skill_id'],
-                "name"     => $s['name'],
-            ], $availableSkills),
-        ]);
-    }
-
-    // ── GET AVAILABLE SKILLS (skills provider does not have) ─────────────────
-    public function getAvailableSkills() {
-        $user = requireRole('service_provider');
-
-        $stmt = $this->db->prepare("SELECT provider_id FROM service_providers WHERE user_id = ?");
-        $stmt->execute([$user['user_id']]);
-        $provider = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$provider) {
-            http_response_code(404);
-            echo json_encode(["success" => false, "message" => "Service provider profile not found"]);
-            return;
-        }
-
-        $stmt = $this->db->prepare("
-            SELECT s.skill_id, s.name 
-            FROM skills s
-            WHERE s.skill_id NOT IN (
-                SELECT skill_id FROM provider_skills WHERE provider_id = ?
-            )
-            ORDER BY s.name ASC
-        ");
-        $stmt->execute([$provider['provider_id']]);
-        $availableSkills = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        echo json_encode([
-            "success" => true,
-            "skills"  => array_map(fn($s) => [
-                "skill_id" => (int) $s['skill_id'],
-                "name"     => $s['name'],
-            ], $availableSkills),
         ]);
     }
 
