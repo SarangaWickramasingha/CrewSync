@@ -152,6 +152,10 @@ elseif ($uri === '/api/service-requests' && $method === 'POST') {
     require_once __DIR__ . '/routes/service_requests.php';
     createServiceRequest();
 }
+elseif (preg_match('#^/api/service-requests/task/(\d+)/pending$#', $uri, $matches) && $method === 'GET') {
+    require_once __DIR__ . '/routes/service_requests.php';
+    getPendingTaskServiceRequest($matches[1]);
+}
 
 // ── ADMIN ────────────────────────────────────────────────────────────────────
 elseif ($uri === '/api/admin/stats' && $method === 'GET') {

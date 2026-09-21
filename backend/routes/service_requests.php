@@ -5,3 +5,8 @@ function createServiceRequest() {
     $controller = new ServiceRequestController();
     $controller->create();
 }
+
+function getPendingTaskServiceRequest($taskId) {
+    $controller = new ServiceRequestController();
+    $controller->getPendingByTask($taskId);
+}

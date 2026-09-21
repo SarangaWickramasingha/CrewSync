@@ -164,4 +164,67 @@ class ServiceRequestController {
         ]);
     }
 
+    // ── GET PENDING REQUEST FOR A TASK ─────────────────────────────────────────
+    // Returns whether the authenticated owner has a pending service request on a
+    // given task, plus the provider it was sent to (if any).
+    public function getPendingByTask($taskId) {
+        $user = requireRole('property_owner');
+
+        $stmt = $this->db->prepare("SELECT owner_id FROM property_owners WHERE user_id = ?");
+        $stmt->execute([$user['user_id']]);
+        $owner = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$owner) {
+            http_response_code(403);
+            echo json_encode(["success" => false, "message" => "Property owner profile not found"]);
+            return;
+        }
+
+        $ownerId = $owner['owner_id'];
+
+        // Task must belong to this owner
+        $stmt = $this->db->prepare("
+            SELECT t.task_id
+            FROM tasks t
+            JOIN projects p ON p.project_id = t.project_id
+            WHERE t.task_id = ? AND p.owner_id = ?
+        ");
+        $stmt->execute([$taskId, $ownerId]);
+        if (!$stmt->fetch(PDO::FETCH_ASSOC)) {
+            http_response_code(404);
+            echo json_encode(["success" => false, "message" => "Task not found"]);
+            return;
+        }
+
+        $stmt = $this->db->prepare("
+            SELECT sr.request_id, sr.request_date, sr.expires_at,
+                   sp.provider_id, u.fname, u.lname
+            FROM service_requests sr
+            JOIN service_providers sp ON sp.provider_id = sr.provider_id
+            JOIN users u ON u.user_id = sp.user_id
+            WHERE sr.owner_id = ? AND sr.task_id = ? AND sr.request_status = 'pending'
+            ORDER BY sr.request_id ASC
+            LIMIT 1
+        ");
+        $stmt->execute([$ownerId, $taskId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$row) {
+            echo json_encode(["success" => true, "pending" => false, "request" => null]);
+            return;
+        }
+
+        echo json_encode([
+            "success" => true,
+            "pending" => true,
+            "request" => [
+                "request_id"    => (int) $row['request_id'],
+                "provider_id"   => (int) $row['provider_id'],
+                "provider_name" => trim(($row['fname'] ?? '') . ' ' . ($row['lname'] ?? '')),
+                "request_date"  => $row['request_date'],
+                "expires_at"    => $row['expires_at'],
+            ],
+        ]);
+    }
+
 }
