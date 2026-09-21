@@ -318,21 +318,50 @@ class SupplierController {
             return;
         }
 
-        // Verify this order belongs to this supplier
+        // Verify this order belongs to this supplier and fetch its current state
         $stmt = $this->db->prepare("
-            SELECT mo.order_id FROM material_orders mo
+            SELECT mo.order_id, mo.order_status, mo.supplier_material_id, mo.quantity
+            FROM material_orders mo
             JOIN supplier_materials sm ON sm.id = mo.supplier_material_id
             WHERE mo.order_id = ? AND sm.supplier_id = ?
         ");
         $stmt->execute([$orderId, $supplierId]);
-        if (!$stmt->fetch()) {
+        $order = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$order) {
             http_response_code(404);
             echo json_encode(["success" => false, "message" => "Order not found"]);
             return;
         }
 
+        $currentStatus = $order['order_status'];
+
+        // Enforce the flow: accept/reject only from pending, deliver only from accepted
+        $transitions = [
+            'accepted'  => ['pending'],
+            'rejected'  => ['pending'],
+            'delivered' => ['accepted'],
+        ];
+        if (!in_array($currentStatus, $transitions[$newStatus])) {
+            http_response_code(409);
+            echo json_encode([
+                "success" => false,
+                "message" => "Order cannot move from '" . $currentStatus . "' to '" . $newStatus . "'",
+            ]);
+            return;
+        }
+
         $stmt = $this->db->prepare("UPDATE material_orders SET order_status = ? WHERE order_id = ?");
         $stmt->execute([$newStatus, $orderId]);
+
+        // ── DEDUCT STOCK ON DELIVERY ─────────────────────────────────────────────
+        if ($newStatus === 'delivered') {
+            $stmt = $this->db->prepare("
+                UPDATE supplier_materials
+                SET stock_qty = GREATEST(stock_qty - ?, 0)
+                WHERE id = ?
+            ");
+            $stmt->execute([(int) $order['quantity'], (int) $order['supplier_material_id']]);
+        }
 
         // ── NOTIFY OWNER ─────────────────────────────────────────────────────────
         $stmt = $this->db->prepare("
