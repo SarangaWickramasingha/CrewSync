@@ -281,6 +281,10 @@ elseif ($uri === '/api/provider/profile' && $method === 'GET') {
     require_once __DIR__ . '/routes/provider.php';
     getProviderProfile();
 }
+elseif ($uri === '/api/provider/available-skills' && $method === 'GET') {
+    require_once __DIR__ . '/routes/provider.php';
+    getProviderAvailableSkills();
+}
 elseif ($uri === '/api/provider/profile' && $method === 'PUT') {
     require_once __DIR__ . '/routes/provider.php';
     updateProviderPersonalInfo();

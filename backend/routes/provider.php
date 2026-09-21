@@ -50,6 +50,10 @@ function getProviderProfile() {
     $controller = new ProviderController();
     $controller->getProfile();
 }
+function getProviderAvailableSkills() {
+    $controller = new ProviderController();
+    $controller->getAvailableSkills();
+}
 function getPublicProviderProfile($providerId) {
     $controller = new ProviderController();
     $controller->getPublicProfile($providerId);
