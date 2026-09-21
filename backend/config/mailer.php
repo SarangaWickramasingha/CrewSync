@@ -1,36 +1,56 @@
 <?php
 
-define('RESEND_API_KEY', Env::get('RESEND_API_KEY', ''));
-define('RESEND_FROM_ADDRESS', Env::get('RESEND_FROM_ADDRESS', 'onboarding@resend.dev'));
-define('RESEND_FROM_NAME', Env::get('RESEND_FROM_NAME', 'CrewSync'));
+define('BREVO_API_KEY', Env::get('BREVO_API_KEY', ''));
+define('BREVO_FROM_EMAIL', Env::get('BREVO_FROM_EMAIL', ''));
+define('BREVO_FROM_NAME', Env::get('BREVO_FROM_NAME', 'CrewSync'));
 
 /**
- * Sends an HTML email via the Resend HTTP API (works on Render free tier —
- * no SMTP required). Returns true on success, false on failure.
- * Failures are written to PHP's error log, not shown to the end user.
+ * Sends an HTML email via the Brevo (Sendinblue) Transactional API
+ * (works on Render free tier — no SMTP required). Returns true on success,
+ * false on failure. Failures are written to PHP's error log, not shown
+ * to the end user.
+ *
+ * Note: BREVO_FROM_EMAIL must be a sender that is VERIFIED in your Brevo
+ * account (Settings → Senders) or a verified sending domain, otherwise the
+ * API returns 400 and every send fails.
  */
 function sendMail(string $toEmail, string $toName, string $subject, string $htmlBody): bool {
-    $from = RESEND_FROM_NAME !== ''
-        ? RESEND_FROM_NAME . ' <' . RESEND_FROM_ADDRESS . '>'
-        : RESEND_FROM_ADDRESS;
+    if (BREVO_API_KEY === '') {
+        error_log('Brevo Error: BREVO_API_KEY is not configured.');
+        return false;
+    }
+    if (BREVO_FROM_EMAIL === '') {
+        error_log('Brevo Error: BREVO_FROM_EMAIL is not configured.');
+        return false;
+    }
 
-    $to = $toName !== '' ? $toName . ' <' . $toEmail . '>' : $toEmail;
+    $toName = $toName !== '' ? $toName : $toEmail;
 
     $payload = [
-        'from'    => $from,
-        'to'      => [$to],
-        'subject' => $subject,
-        'html'    => $htmlBody,
+        'sender'      => [
+            'email' => BREVO_FROM_EMAIL,
+            'name'  => BREVO_FROM_NAME,
+        ],
+        'to'          => [
+            [
+                'email' => $toEmail,
+                'name'  => $toName,
+            ],
+        ],
+        'subject'     => $subject,
+        'htmlContent' => $htmlBody,
     ];
 
-    $ch = curl_init('https://api.resend.com/emails');
+    $ch = curl_init('https://api.brevo.com/v3/smtp/email');
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_POST           => true,
         CURLOPT_POSTFIELDS     => json_encode($payload),
         CURLOPT_HTTPHEADER     => [
-            'Authorization: Bearer ' . RESEND_API_KEY,
+            'api-key: ' . BREVO_API_KEY,
+            'x-api-key: ' . BREVO_API_KEY,
             'Content-Type: application/json',
+            'Accept: application/json',
         ],
         CURLOPT_TIMEOUT        => 20,
     ]);
@@ -40,8 +60,10 @@ function sendMail(string $toEmail, string $toName, string $subject, string $html
     $curlErr  = curl_error($ch);
     curl_close($ch);
 
+    // Brevo returns HTTP 201 on success. A decodable body may be returned on
+    // 4xx (e.g. sender not verified / invalid API key), so log it for debugging.
     if ($response === false || $httpCode < 200 || $httpCode >= 300) {
-        error_log('Resend Error: HTTP ' . $httpCode . ' ' . ($curlErr ?: $response));
+        error_log('Brevo Error: HTTP ' . $httpCode . ' ' . ($curlErr ?: (string) $response));
         return false;
     }
 
