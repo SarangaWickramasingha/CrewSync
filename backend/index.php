@@ -320,6 +320,10 @@ elseif ($uri === '/api/supplier/products' && $method === 'GET') {
     require_once __DIR__ . '/routes/supplier.php';
     getSupplierProducts();
 }
+elseif ($uri === '/api/supplier/available-materials' && $method === 'GET') {
+    require_once __DIR__ . '/routes/supplier.php';
+    getSupplierAvailableMaterials();
+}
 elseif ($uri === '/api/supplier/products' && $method === 'POST') {
     require_once __DIR__ . '/routes/supplier.php';
     upsertSupplierProduct();
