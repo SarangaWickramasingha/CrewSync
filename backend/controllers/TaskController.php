@@ -211,21 +211,4 @@ class TaskController {
             "tasks"   => $tasks,
         ]);
     }
-
-    // ── DELETE TASK ────────────────────────────────────────────────────────────
-    public function delete($taskId) {
-        $user = requireRole('property_owner');
-        $task = $this->getOwnedTask($taskId, $user['user_id']);
-
-        if (!$task) {
-            http_response_code(404);
-            echo json_encode(["success" => false, "message" => "Task not found"]);
-            return;
-        }
-
-        $stmt = $this->db->prepare("DELETE FROM tasks WHERE task_id = ?");
-        $stmt->execute([$taskId]);
-
-        echo json_encode(["success" => true]);
-    }
 }

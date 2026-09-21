@@ -102,10 +102,6 @@ elseif (preg_match('#^/api/tasks/(\d+)/daily-status$#', $uri, $matches) && $meth
     require_once __DIR__ . '/routes/tasks.php';
     saveTaskDailyStatus($matches[1]);
 }
-elseif (preg_match('#^/api/tasks/(\d+)$#', $uri, $matches) && $method === 'DELETE') {
-    require_once __DIR__ . '/routes/tasks.php';
-    deleteTask($matches[1]);
-}
 
 // ── FEEDBACK ─────────────────────────────────────────────────────────────────
 elseif ($uri === '/api/feedback/submit' && $method === 'POST') {

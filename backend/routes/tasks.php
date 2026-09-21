@@ -25,8 +25,3 @@ function getUnassignedTasks() {
     $controller = new TaskController();
     $controller->getUnassigned();
 }
-
-function deleteTask($taskId) {
-    $controller = new TaskController();
-    $controller->delete($taskId);
-}
